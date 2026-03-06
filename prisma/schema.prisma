@@ -19,3 +19,44 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model Manga {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  author    String?
+  coverPath String?
+
+  volumes   Volume[]
+
+  createdAt DateTime @default(now())
+}
+
+model Volume {
+  id         String   @id @default(cuid())
+  mangaId    String
+  number     Int
+  title      String?
+  status     VolumeStatus
+  pagesCount Int      @default(0)
+
+  pages      Page[]
+
+  createdAt  DateTime @default(now())
+
+  Manga Manga @relation(fields: [mangaId], references: [id])
+}
+
+model Page {
+  id       String @id @default(cuid())
+  volumeId String
+  index    Int
+  filename String
+
+  Volume Volume @relation(fields: [volumeId], references: [id])
+}
+
+enum VolumeStatus {
+  UPLOADING
+  READY
+}
