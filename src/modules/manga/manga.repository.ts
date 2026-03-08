@@ -52,4 +52,49 @@ export class MangaRepository {
       })),
     })
   }
+  
+  findMangaOwnedByUser(mangaId: string, userId: string) {
+    return prisma.manga.findFirst({
+      where: {
+        id: mangaId,
+        userId,
+      },
+    });
+  }
+
+  findVolumeOwnedByUser(volumeId: string, mangaId: string, userId: string) {
+    return prisma.volume.findFirst({
+      where: {
+        id: volumeId,
+        mangaId,
+        Manga: {
+          userId,
+        },
+      },
+    });
+  }
+
+  findPagesByVolume(volumeId: string) {
+    return prisma.page.findMany({
+      where: { volumeId },
+      orderBy: { index: "asc" },
+      select: {
+        index: true,
+        filename: true,
+      },
+    });
+  }
+
+  findPageByVolumeAndIndex(volumeId: string, pageIndex: number) {
+    return prisma.page.findFirst({
+      where: {
+        volumeId,
+        index: pageIndex,
+      },
+      select: {
+        index: true,
+        filename: true,
+      },
+    });
+  }
 }

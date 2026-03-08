@@ -6,7 +6,6 @@ export class MangaController {
   constructor(private service: MangaService) {}
 
   createManga = async (req: FastifyRequest, reply: FastifyReply) => {
-
     const { title, author } = req.body as any
     const userId = (req.user as any).sub
 
@@ -16,7 +15,6 @@ export class MangaController {
   }
 
   createVolume = async (req: FastifyRequest, reply: FastifyReply) => {
-
     const { mangaId } = req.params as any
     const { number, title } = req.body as any
 
@@ -26,11 +24,32 @@ export class MangaController {
   }
 
   uploadPages = async (req: FastifyRequest, reply: FastifyReply) => {
-
     const { mangaId, volumeId } = req.params as any
 
     const result = await this.service.uploadPages(req, mangaId, volumeId)
 
     return reply.send(result)
   }
+
+  listVolumePages = async (req: FastifyRequest, reply: FastifyReply) => {
+    const { mangaId, volumeId } = req.params as any;
+    const userId = (req.user as any).sub;
+
+    const result = await this.service.listVolumePages(userId, mangaId, volumeId);
+
+    return reply.send(result);
+  };
+
+  streamPageImage = async (req: FastifyRequest, reply: FastifyReply) => {
+    const { mangaId, volumeId, pageNumber } = req.params as any;
+    const userId = (req.user as any).sub;
+
+    return this.service.streamPageImage(
+      reply,
+      userId,
+      mangaId,
+      volumeId,
+      Number(pageNumber)
+    );
+  };
 }

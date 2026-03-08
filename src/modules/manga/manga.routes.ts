@@ -29,4 +29,16 @@ export async function mangaRoutes(app: FastifyInstance) {
     { preHandler: requireAuth },
     controller.uploadPages
   )
+
+  app.get(
+    "/:mangaId/volumes/:volumeId/pages",
+    { preHandler: requireAuth },
+    controller.listVolumePages
+  );
+
+  app.get(
+    "/:mangaId/volumes/:volumeId/pages/:pageNumber/image",
+    { preHandler: requireAuth },
+    controller.streamPageImage
+  );
 }
