@@ -19,6 +19,9 @@ model User {
   role      Role     @default(USER)
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mangaProgress MangaProgress[]
 }
 
 enum Role {
@@ -74,6 +77,8 @@ model MangaProgress {
   page     Int
 
   updatedAt DateTime @updatedAt
+  
+  User User @relation(fields: [userId], references: [id])
 }
 
 model ReadingSession {
