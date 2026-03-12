@@ -16,13 +16,18 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   password  String
+  role      Role     @default(USER)
+
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  USER
+  ADMIN
 }
 
 model Manga {
   id        String   @id @default(cuid())
-  userId    String
   title     String
   author    String?
   coverPath String?
@@ -59,4 +64,24 @@ model Page {
 enum VolumeStatus {
   UPLOADING
   READY
+}
+
+model MangaProgress {
+  id       String @id @default(cuid())
+  userId   String
+  mangaId  String
+  volumeId String
+  page     Int
+
+  updatedAt DateTime @updatedAt
+}
+
+model ReadingSession {
+  id          String   @id @default(cuid())
+  userId      String
+  contentType String
+  contentId   String
+
+  startedAt   DateTime
+  endedAt     DateTime?
 }

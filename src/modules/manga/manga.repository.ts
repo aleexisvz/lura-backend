@@ -52,15 +52,6 @@ export class MangaRepository {
       })),
     })
   }
-  
-  findMangaOwnedByUser(mangaId: string, userId: string) {
-    return prisma.manga.findFirst({
-      where: {
-        id: mangaId,
-        userId,
-      },
-    });
-  }
 
   findVolumeOwnedByUser(volumeId: string, mangaId: string, userId: string) {
     return prisma.volume.findFirst({
