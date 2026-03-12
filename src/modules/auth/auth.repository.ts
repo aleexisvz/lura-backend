@@ -8,7 +8,7 @@ export class AuthRepository {
   async createUser(email: string, passwordHash: string) {
     return prisma.user.create({
       data: { email, password: passwordHash },
-      select: { id: true, email: true },
+      select: { id: true, email: true, role: true },
     });
   }
 

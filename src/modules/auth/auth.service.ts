@@ -18,7 +18,10 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const user = await this.repo.createUser(email, passwordHash);
 
-    const token = this.app.jwt.sign({ email }, { sub: user.id });
+    const token = this.app.jwt.sign(
+      { email: user.email, role: user.role },
+      { sub: user.id }
+    );
 
     return { token, user };
   }
@@ -32,7 +35,10 @@ export class AuthService {
     const ok = await bcrypt.compare(dto.password, user.password);
     if (!ok) throw new Error("INVALID_CREDENTIALS");
 
-    const token = this.app.jwt.sign({ email }, { sub: user.id });
+    const token = this.app.jwt.sign(
+      { email: user.email, role: user.role },
+      { sub: user.id }
+    );
 
     return { token, user: { id: user.id, email: user.email } };
   }
