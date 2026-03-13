@@ -13,6 +13,18 @@ export class MangaService {
     private storage: LocalStorageService
   ) {}
 
+  async getAllMangas() {
+    return this.repo.getAllMangas()
+  }
+
+  async getMangaById(id: string) {
+    return this.repo.findMangaById(id)
+  }
+
+  async getVolumesByMangaId(mangaId: string) {
+    return this.repo.findVolumesByMangaId(mangaId)
+  }
+
   async createManga(userId: string, title: string, author?: string) {
     return this.repo.createManga({ 
         userId,
@@ -98,7 +110,7 @@ export class MangaService {
   }
 
   async listVolumePages(userId: string, mangaId: string, volumeId: string) {
-    const volume = await this.repo.findVolumeOwnedByUser(volumeId, mangaId, userId);
+    const volume = await this.repo.findVolumeById(volumeId);
 
     if (!volume) {
       throw new Error("VOLUME_NOT_FOUND");
@@ -128,7 +140,7 @@ export class MangaService {
     volumeId: string,
     pageIndex: number
   ) {
-    const volume = await this.repo.findVolumeOwnedByUser(volumeId, mangaId, userId);
+    const volume = await this.repo.findVolumeById(volumeId);
 
     if (!volume) {
       throw new Error("VOLUME_NOT_FOUND");

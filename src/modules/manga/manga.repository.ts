@@ -2,6 +2,14 @@ import { prisma } from "../../infrastructure/database/prisma.js"
 
 export class MangaRepository {
 
+  getAllMangas() {
+    return prisma.manga.findMany({
+      orderBy: {
+        createdAt: "desc",
+      },
+    })
+  }
+
   createManga(data: { userId: string; title: string; author?: string }) {
     return prisma.manga.create({
       data,
@@ -33,6 +41,13 @@ export class MangaRepository {
     })
   }
 
+  findVolumesByMangaId(mangaId: string) {
+    return prisma.volume.findMany({
+      where: { mangaId },
+      orderBy: { number: "asc" },
+    })
+  }
+
   updateVolumeStatus(id: string, pagesCount: number) {
     return prisma.volume.update({
       where: { id },
@@ -53,17 +68,17 @@ export class MangaRepository {
     })
   }
 
-  findVolumeOwnedByUser(volumeId: string, mangaId: string, userId: string) {
-    return prisma.volume.findFirst({
-      where: {
-        id: volumeId,
-        mangaId,
-        Manga: {
-          userId,
-        },
-      },
-    });
-  }
+  // findVolumeOwnedByUser(volumeId: string, mangaId: string, userId: string) {
+  //   return prisma.volume.findFirst({
+  //     where: {
+  //       id: volumeId,
+  //       mangaId,
+  //       Manga: {
+  //         userId,
+  //       },
+  //     },
+  //   });
+  // }
 
   findPagesByVolume(volumeId: string) {
     return prisma.page.findMany({

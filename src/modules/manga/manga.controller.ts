@@ -5,6 +5,29 @@ export class MangaController {
 
   constructor(private service: MangaService) {}
 
+  getAllMangas = async (req: FastifyRequest, reply: FastifyReply) => {
+    const mangas = await this.service.getAllMangas();
+    return reply.send(mangas);
+  }
+
+  getMangaById = async (req: FastifyRequest, reply: FastifyReply) => {
+    const { mangaId } = req.params as any;
+    const manga = await this.service.getMangaById(mangaId);
+
+    if (!manga) {
+      return reply.status(404).send({ message: "Manga not found" });
+    }
+
+    return reply.send(manga);
+  }
+
+
+  getVolumesByMangaId = async (req: FastifyRequest, reply: FastifyReply) => {
+    const { mangaId } = req.params as any;
+    const volumes = await this.service.getVolumesByMangaId(mangaId);
+    return reply.send(volumes);
+  }
+
   createManga = async (req: FastifyRequest, reply: FastifyReply) => {
     const { title, author } = req.body as any
     const userId = (req.user as any).sub
