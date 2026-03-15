@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { MangaRepository } from "./manga.repository.js";
 import { LocalStorageService } from "../../infrastructure/storage/LocalStorageService.js";
 import { naturalSortByFilename } from "../../shared/utils/natural-sort.js";
+import { AppError } from "../../shared/errors/AppError.js";
 
 export class MangaService {
 
@@ -25,15 +26,32 @@ export class MangaService {
     return this.repo.findVolumesByMangaId(mangaId)
   }
 
-  async createManga(userId: string, title: string, author?: string) {
+  async createManga(title: string, author?: string) {
     return this.repo.createManga({ 
-        userId,
         title,
         ...(author && { author })
      })
   }
 
   async createVolume(mangaId: string, number: number, title?: string) {
+    const manga = await this.repo.findMangaById(mangaId)
+    if (!manga) {
+      throw new AppError({
+        code: "MANGA_NOT_FOUND",
+        statusCode: 404,
+        message: "Manga not found",
+      })
+    }
+
+    const duplicated = await this.repo.findVolumeByMangaAndNumber(mangaId, number)
+    if (duplicated) {
+      throw new AppError({
+        code: "VOLUME_NUMBER_DUPLICATE",
+        statusCode: 409,
+        message: "Volume number already exists for this manga",
+      })
+    }
+
     return this.repo.createVolume({ 
         mangaId,
         number,
@@ -71,7 +89,11 @@ export class MangaService {
     const sortedFiles = naturalSortByFilename(uploadedFiles);
 
     if (sortedFiles.length === 0) {
-      throw new Error("NO_FILES_UPLOADED")
+      throw new AppError({
+        code: "NO_FILES_UPLOADED",
+        statusCode: 400,
+        message: "No files uploaded",
+      })
     }
 
     const finalDir = path.join(
@@ -113,7 +135,11 @@ export class MangaService {
     const volume = await this.repo.findVolumeById(volumeId);
 
     if (!volume) {
-      throw new Error("VOLUME_NOT_FOUND");
+      throw new AppError({
+        code: "VOLUME_NOT_FOUND",
+        statusCode: 404,
+        message: "Volume not found",
+      });
     }
 
     const pages = await this.repo.findPagesByVolume(volumeId);
@@ -143,20 +169,32 @@ export class MangaService {
     const volume = await this.repo.findVolumeById(volumeId);
 
     if (!volume) {
-      throw new Error("VOLUME_NOT_FOUND");
+      throw new AppError({
+        code: "VOLUME_NOT_FOUND",
+        statusCode: 404,
+        message: "Volume not found",
+      });
     }
 
     const page = await this.repo.findPageByVolumeAndIndex(volumeId, pageIndex);
 
     if (!page) {
-      throw new Error("PAGE_NOT_FOUND");
+      throw new AppError({
+        code: "PAGE_NOT_FOUND",
+        statusCode: 404,
+        message: "Page not found",
+      });
     }
 
     const filepath = this.storage.resolveMangaPagePath(mangaId, volumeId, page.filename);
     const exists = await this.storage.exists(filepath);
 
     if (!exists) {
-      throw new Error("PAGE_FILE_NOT_FOUND");
+      throw new AppError({
+        code: "PAGE_FILE_NOT_FOUND",
+        statusCode: 404,
+        message: "Page file not found",
+      });
     }
 
     reply.header("Content-Type", "image/jpeg");

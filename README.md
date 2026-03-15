@@ -33,6 +33,7 @@ NODE_ENV=development
 PORT=3001
 
 DATABASE_URL=postgresql://usuario:password@localhost:5432/lura
+DATABASE_URL_TEST=postgresql://usuario:password@localhost:5432/lura_test
 
 JWT_SECRET=tu_secreto_super_seguro
 JWT_EXPIRES_IN=15m
@@ -41,6 +42,7 @@ JWT_EXPIRES_IN=15m
 Notas:
 
 - `DATABASE_URL` es obligatoria para Prisma y runtime.
+- `DATABASE_URL_TEST` es opcional. Si no se define, los tests derivan automaticamente `<DATABASE_URL>_test`.
 - `JWT_SECRET` debe tener minimo 10 caracteres.
 
 ## Instalacion y arranque
@@ -74,10 +76,33 @@ Servidor por defecto: `http://localhost:3001`
 ## Scripts disponibles
 
 - `npm run dev`: inicia el servidor con hot reload (`tsx watch src/server.ts`)
+- `npm test`: ejecuta todos los tests con Vitest
+- `npm run test:watch`: ejecuta tests en modo watch
+- `npm run test:coverage`: ejecuta tests con cobertura
 - `npm run build`: compila TypeScript
 - `npm run start`: ejecuta build compilado (`dist/server.js`)
 - `npm run prisma:generate`: genera Prisma Client
 - `npm run prisma:migrate`: corre migraciones en modo dev
+
+## Testing
+
+Stack de tests:
+
+- Vitest
+- Fastify `inject` para tests de API
+- PostgreSQL real para tests de integracion
+
+Cobertura implementada:
+
+- Services -> Unit tests
+- Repositories -> Integration tests
+- Routes -> API tests
+
+Comportamiento de DB de test:
+
+- El setup global crea la base de test si no existe.
+- Se ejecutan migraciones (`prisma migrate deploy`) sobre la DB de test.
+- Cada test limpia tablas para mantener aislamiento.
 
 ## Arquitectura
 

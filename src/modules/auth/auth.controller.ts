@@ -3,12 +3,12 @@ import { z } from "zod";
 import { AuthService } from "./auth.service.js";
 
 const RegisterSchema = z.object({
-  email: z.email(),
+  email: z.string().trim().email(),
   password: z.string().min(6),
 });
 
 const LoginSchema = z.object({
-  email: z.email(),
+  email: z.string().trim().email(),
   password: z.string().min(6),
 });
 

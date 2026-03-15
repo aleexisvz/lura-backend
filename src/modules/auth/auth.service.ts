@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import type { FastifyInstance } from "fastify";
 import { AuthRepository } from "./auth.repository.js";
 import type { AuthResponseDTO, LoginDTO, RegisterDTO } from "./auth.types.js";
+import { AppError } from "../../shared/errors/AppError.js";
 
 export class AuthService {
   constructor(
@@ -13,7 +14,13 @@ export class AuthService {
     const email = dto.email.trim().toLowerCase();
 
     const existing = await this.repo.findUserByEmail(email);
-    if (existing) throw new Error("EMAIL_ALREADY_IN_USE");
+    if (existing) {
+      throw new AppError({
+        code: "EMAIL_ALREADY_IN_USE",
+        statusCode: 409,
+        message: "Email already in use",
+      });
+    }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const user = await this.repo.createUser(email, passwordHash);
@@ -30,10 +37,22 @@ export class AuthService {
     const email = dto.email.trim().toLowerCase();
 
     const user = await this.repo.findUserByEmail(email);
-    if (!user) throw new Error("INVALID_CREDENTIALS");
+    if (!user) {
+      throw new AppError({
+        code: "INVALID_CREDENTIALS",
+        statusCode: 401,
+        message: "Invalid credentials",
+      });
+    }
 
     const ok = await bcrypt.compare(dto.password, user.password);
-    if (!ok) throw new Error("INVALID_CREDENTIALS");
+    if (!ok) {
+      throw new AppError({
+        code: "INVALID_CREDENTIALS",
+        statusCode: 401,
+        message: "Invalid credentials",
+      });
+    }
 
     const token = this.app.jwt.sign(
       { email: user.email, role: user.role },

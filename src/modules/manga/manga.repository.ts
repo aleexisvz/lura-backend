@@ -10,7 +10,7 @@ export class MangaRepository {
     })
   }
 
-  createManga(data: { userId: string; title: string; author?: string }) {
+  createManga(data: { title: string; author?: string }) {
     return prisma.manga.create({
       data,
     })
@@ -45,6 +45,15 @@ export class MangaRepository {
     return prisma.volume.findMany({
       where: { mangaId },
       orderBy: { number: "asc" },
+    })
+  }
+
+  findVolumeByMangaAndNumber(mangaId: string, number: number) {
+    return prisma.volume.findFirst({
+      where: {
+        mangaId,
+        number,
+      },
     })
   }
 
