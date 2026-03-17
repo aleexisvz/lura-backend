@@ -5,12 +5,15 @@ import { registerPlugins } from "./config/plugins.js";
 import { authRoutes } from "./modules/auth/auth.routes.js";
 import { mangaRoutes } from "./modules/manga/manga.routes.js";
 import { AppError } from "./shared/errors/AppError.js";
+import { mangaProgressRoutes } from "./modules/reading/manga-progress.routes.js";
 
 export async function buildApp() {
   const app = Fastify({ logger: true });
 
   await registerPlugins(app);
-
+  
+  await app.register(mangaProgressRoutes)
+  
   app.setErrorHandler((error, req, reply) => {
     if (error instanceof AppError) {
       return reply.status(error.statusCode).send({
@@ -51,7 +54,7 @@ export async function buildApp() {
   });
 
   await app.register(authRoutes, { prefix: "/auth" });
- 
+
   await app.register(mangaRoutes, { prefix: "/manga" })
 
   return app;
