@@ -100,33 +100,4 @@ export class MangaRepository {
       },
     });
   }
-
-  findProgress(userId: string, mangaId: string) {
-    return prisma.mangaProgress.findUnique({
-      where: {
-        userId_mangaId: {
-          userId,
-          mangaId,
-        },
-      },
-    })
-  }
-
-  createProgress(data: { userId: string; mangaId: string; volumeId: string; page: number }) {
-    return prisma.mangaProgress.create({
-      data,
-    })
-  }
-
-  updateProgress(userId: string, mangaId: string, data: { volumeId: string; page: number }) {
-    return prisma.mangaProgress.update({
-      where: {
-        userId_mangaId: {
-          userId,
-          mangaId,
-        },
-      },
-      data,
-    })
-  }
 }

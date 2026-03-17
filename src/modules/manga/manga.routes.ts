@@ -60,10 +60,4 @@ export async function mangaRoutes(app: FastifyInstance) {
     { preHandler: [requireAuth] },
     controller.streamPageImage
   );
-
-  app.post(
-    "/:mangaId/volumes/:volumeId/progress",
-    { preHandler: [requireAuth] },
-    controller.updateProgress
-  );
 }

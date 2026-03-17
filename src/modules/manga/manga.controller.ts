@@ -100,17 +100,4 @@ export class MangaController {
       pageNumber
     );
   };
-
-  updateProgress = async (req: FastifyRequest, reply: FastifyReply) => {
-    const { mangaId } = MangaIdParamsSchema.parse(req.params);
-    const userId = (req.user as any).sub;
-    const { volumeId, pageIndex } = z.object({
-      volumeId: z.string().trim().min(1),
-      pageIndex: z.coerce.number().int().positive(),
-    }).parse(req.body);
-
-    const result = await this.service.updateProgress(userId, mangaId, volumeId, pageIndex);
-
-    return reply.send(result);
-  }
 }

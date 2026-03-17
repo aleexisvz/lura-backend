@@ -203,25 +203,4 @@ export class MangaService {
 
     return reply.send(this.storage.createReadStream(filepath));
   }
-
-  async updateProgress(userId: string, mangaId: string, volumeId: string, page: number) {
-
-    const current = await this.repo.findProgress(userId, mangaId)
-
-    if (!current) {
-      return this.repo.createProgress({ userId, mangaId, volumeId, page })
-    }
-
-    if (
-      volumeId === current.volumeId &&
-      page <= current.page
-    ) {
-      return current
-    }
-
-    return this.repo.updateProgress(userId, mangaId, {
-      volumeId,
-      page
-    })
-  }
 }
