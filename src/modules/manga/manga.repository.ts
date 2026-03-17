@@ -77,18 +77,6 @@ export class MangaRepository {
     })
   }
 
-  // findVolumeOwnedByUser(volumeId: string, mangaId: string, userId: string) {
-  //   return prisma.volume.findFirst({
-  //     where: {
-  //       id: volumeId,
-  //       mangaId,
-  //       Manga: {
-  //         userId,
-  //       },
-  //     },
-  //   });
-  // }
-
   findPagesByVolume(volumeId: string) {
     return prisma.page.findMany({
       where: { volumeId },
@@ -111,5 +99,34 @@ export class MangaRepository {
         filename: true,
       },
     });
+  }
+
+  findProgress(userId: string, mangaId: string) {
+    return prisma.mangaProgress.findUnique({
+      where: {
+        userId_mangaId: {
+          userId,
+          mangaId,
+        },
+      },
+    })
+  }
+
+  createProgress(data: { userId: string; mangaId: string; volumeId: string; page: number }) {
+    return prisma.mangaProgress.create({
+      data,
+    })
+  }
+
+  updateProgress(userId: string, mangaId: string, data: { volumeId: string; page: number }) {
+    return prisma.mangaProgress.update({
+      where: {
+        userId_mangaId: {
+          userId,
+          mangaId,
+        },
+      },
+      data,
+    })
   }
 }

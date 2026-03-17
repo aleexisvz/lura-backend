@@ -1,4 +1,4 @@
-import  type{ FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import path from "node:path";
 import fs from "node:fs";
 import { randomUUID } from "node:crypto";
@@ -12,7 +12,7 @@ export class MangaService {
   constructor(
     private repo: MangaRepository,
     private storage: LocalStorageService
-  ) {}
+  ) { }
 
   async getAllMangas() {
     return this.repo.getAllMangas()
@@ -27,10 +27,10 @@ export class MangaService {
   }
 
   async createManga(title: string, author?: string) {
-    return this.repo.createManga({ 
-        title,
-        ...(author && { author })
-     })
+    return this.repo.createManga({
+      title,
+      ...(author && { author })
+    })
   }
 
   async createVolume(mangaId: string, number: number, title?: string) {
@@ -52,11 +52,11 @@ export class MangaService {
       })
     }
 
-    return this.repo.createVolume({ 
-        mangaId,
-        number,
-        ...(title && { title })
-     })
+    return this.repo.createVolume({
+      mangaId,
+      number,
+      ...(title && { title })
+    })
   }
 
   async uploadPages(req: FastifyRequest, mangaId: string, volumeId: string) {
@@ -67,7 +67,7 @@ export class MangaService {
       "temp",
       uploadSession
     )
-    
+
     await this.storage.ensureDir(tempDir)
     const parts = req.parts()
     const uploadedFiles: { tempFilename: string; originalFilename: string }[] = [];
@@ -108,7 +108,7 @@ export class MangaService {
 
     await this.storage.ensureDir(finalDir)
     const pages: { index: number; filename: string }[] = []
-    
+
     for (const original of sortedFiles) {
       const index = sortedFiles.indexOf(original) + 1
       const newName = `${String(index).padStart(3, "0")}.jpeg`
@@ -121,7 +121,7 @@ export class MangaService {
         filename: newName,
       })
     }
-    
+
     await this.repo.createPages(volumeId, pages)
     await this.repo.updateVolumeStatus(volumeId, pages.length)
     await fs.promises.rm(tempDir, { recursive: true, force: true })
@@ -202,5 +202,26 @@ export class MangaService {
     reply.header("Content-Disposition", `inline; filename="${page.filename}"`);
 
     return reply.send(this.storage.createReadStream(filepath));
+  }
+
+  async updateProgress(userId: string, mangaId: string, volumeId: string, page: number) {
+
+    const current = await this.repo.findProgress(userId, mangaId)
+
+    if (!current) {
+      return this.repo.createProgress({ userId, mangaId, volumeId, page })
+    }
+
+    if (
+      volumeId === current.volumeId &&
+      page <= current.page
+    ) {
+      return current
+    }
+
+    return this.repo.updateProgress(userId, mangaId, {
+      volumeId,
+      page
+    })
   }
 }
