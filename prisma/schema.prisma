@@ -71,6 +71,7 @@ enum VolumeStatus {
 
 model MangaProgress {
   id       String @id @default(cuid())
+  
   userId   String
   mangaId  String
   volumeId String
@@ -78,7 +79,10 @@ model MangaProgress {
 
   updatedAt DateTime @updatedAt
   
-  User User @relation(fields: [userId], references: [id])
+  User   User   @relation(fields: [userId], references: [id])
+  
+  @@unique([userId, mangaId])
+  @@index([userId])
 }
 
 model ReadingSession {
