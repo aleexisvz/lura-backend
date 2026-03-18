@@ -18,6 +18,8 @@ model User {
   password  String
   role      Role     @default(USER)
 
+  readingSessions ReadingSession[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -86,11 +88,27 @@ model MangaProgress {
 }
 
 model ReadingSession {
-  id          String   @id @default(cuid())
-  userId      String
-  contentType String
-  contentId   String
+  id              String             @id @default(cuid())
 
-  startedAt   DateTime
-  endedAt     DateTime?
+  userId          String
+  contentType     ReadingContentType
+  contentId       String
+
+  startedAt       DateTime
+  endedAt         DateTime?
+  durationSeconds Int?
+
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  User            User               @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([userId, contentType])
+  @@index([contentId])
+}
+
+enum ReadingContentType {
+  MANGA
+  BOOK
 }
