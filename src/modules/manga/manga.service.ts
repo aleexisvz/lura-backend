@@ -60,6 +60,8 @@ export class MangaService {
   }
 
   async uploadPages(req: FastifyRequest, mangaId: string, volumeId: string) {
+    // Each upload gets its own isolated temp directory so that concurrent
+    // uploads for the same volume don't overwrite each other's files.
     const uploadSession = randomUUID()
     const tempDir = path.join(
       process.cwd(),
@@ -68,6 +70,9 @@ export class MangaService {
       uploadSession
     )
 
+    // --- Phase 1: stream every multipart file into the temp directory ---
+    // Files are stored under a UUID name to avoid collisions; the original
+    // filename is preserved separately so we can sort by it afterwards.
     await this.storage.ensureDir(tempDir)
     const parts = req.parts()
     const uploadedFiles: { tempFilename: string; originalFilename: string }[] = [];
@@ -86,6 +91,10 @@ export class MangaService {
       });
     }
 
+    // --- Phase 2: sort pages by their original filename ---
+    // Natural sort ensures "page10.jpg" comes after "page9.jpg" instead of
+    // after "page1.jpg" as lexicographic sort would produce.
+    // Example: ["page2.jpg", "page10.jpg", "page1.jpg"] → ["page1.jpg", "page2.jpg", "page10.jpg"]
     const sortedFiles = naturalSortByFilename(uploadedFiles);
 
     if (sortedFiles.length === 0) {
@@ -96,6 +105,9 @@ export class MangaService {
       })
     }
 
+    // --- Phase 3: move files to their final location with canonical names ---
+    // Pages are renamed to zero-padded indexes so the filesystem order is
+    // always predictable: 001.jpeg, 002.jpeg, … 099.jpeg, 100.jpeg, etc.
     const finalDir = path.join(
       process.cwd(),
       "storage",
@@ -111,6 +123,7 @@ export class MangaService {
 
     for (const original of sortedFiles) {
       const index = sortedFiles.indexOf(original) + 1
+      // e.g. index 7 → "007.jpeg"
       const newName = `${String(index).padStart(3, "0")}.jpeg`
       const src = path.join(tempDir, original.tempFilename)
       const dest = path.join(finalDir, newName)
@@ -123,7 +136,10 @@ export class MangaService {
     }
 
     await this.repo.createPages(volumeId, pages)
+    // Mark the volume as READY and store the final page count.
     await this.repo.updateVolumeStatus(volumeId, pages.length)
+    // Clean up the temp directory; use force:true so a partial upload
+    // doesn't leave an unremovable directory behind.
     await fs.promises.rm(tempDir, { recursive: true, force: true })
 
     return {
@@ -198,9 +214,16 @@ export class MangaService {
     }
 
     reply.header("Content-Type", "image/jpeg");
+    // Cache for 24 h on the client only (private) — pages never change once
+    // uploaded, so long-lived caching is safe; "private" prevents CDN caching
+    // of potentially user-restricted content.
     reply.header("Cache-Control", "private, max-age=86400");
+    // "inline" tells the browser to render the image in-place instead of
+    // triggering a file download.
     reply.header("Content-Disposition", `inline; filename="${page.filename}"`);
 
+    // Stream the file directly to the response to avoid loading it fully into
+    // memory — important for large images.
     return reply.send(this.storage.createReadStream(filepath));
   }
 }

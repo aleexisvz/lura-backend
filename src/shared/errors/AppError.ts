@@ -1,3 +1,13 @@
+/**
+ * All domain / application errors thrown inside services and repositories.
+ * The global Fastify error handler in app.ts catches these and serializes
+ * them into a consistent JSON response:
+ *
+ *   { "code": "MANGA_NOT_FOUND", "message": "Manga not found" }
+ *
+ * Using a typed union for codes means TypeScript will catch any typo at
+ * compile time; add new codes here when introducing new error cases.
+ */
 export type AppErrorCode =
 	| "INVALID_PARAMS"
 	| "EMAIL_ALREADY_IN_USE"
@@ -13,6 +23,7 @@ export type AppErrorCode =
 export class AppError extends Error {
 	readonly code: AppErrorCode;
 	readonly statusCode: number;
+	// Optional extra context (e.g. validation field errors) forwarded to the client.
 	readonly details?: unknown;
 
 	constructor(options: {

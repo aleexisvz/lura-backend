@@ -25,7 +25,8 @@ export class MangaProgressService {
         volumeId: string,
         page: number
     ) {
-
+        // Upsert pattern: one progress record per (user, manga) pair.
+        // If none exists yet, create it; otherwise update it.
         const current = await this.repo.findByUserAndManga(userId, mangaId)
 
         if (!current) {
@@ -37,7 +38,11 @@ export class MangaProgressService {
             })
         }
 
-        // ⚠ Regla clave: no retroceder progreso
+        // Progress never goes backwards within the same volume.
+        // If the client sends page 3 but the user is already on page 7,
+        // keep the higher value.
+        // Note: switching to a later volume always advances progress,
+        // even if the page number is lower.
         if (
             current.volumeId === volumeId &&
             page <= current.page
