@@ -18,7 +18,8 @@ export type AppErrorCode =
 	| "NO_FILES_UPLOADED"
 	| "VOLUME_NOT_FOUND"
 	| "PAGE_NOT_FOUND"
-	| "PAGE_FILE_NOT_FOUND";
+	| "PAGE_FILE_NOT_FOUND"
+	| "PAGE_OUT_OF_RANGE";
 
 export class AppError extends Error {
 	readonly code: AppErrorCode;

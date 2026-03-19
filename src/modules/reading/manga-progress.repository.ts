@@ -13,6 +13,14 @@ export class MangaProgressRepository {
         })
     }
 
+    findMangaById(id: string) {
+        return prisma.manga.findUnique({ where: { id } })
+    }
+
+    findVolumeById(id: string) {
+        return prisma.volume.findUnique({ where: { id } })
+    }
+
     create(data: {
         userId: string
         mangaId: string
