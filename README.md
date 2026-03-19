@@ -6,8 +6,8 @@ El proyecto usa Fastify + Prisma + PostgreSQL, JWT para auth y almacenamiento lo
 
 ## Estado actual
 
-- Rutas activas en la app: `/auth`, `/manga`
-- Modulos presentes en `src/modules` pero no registrados en `src/app.ts`: `book`, `collections`, `reading`
+- Rutas activas en la app: `/auth`, `/manga`, `/reading`
+- Modulos presentes en `src/modules` pero no registrados en `src/app.ts`: `book`, `collections`
 
 ## Stack tecnico
 
@@ -197,6 +197,164 @@ Respuesta esperada:
 ### Manga
 
 #### GET `/manga/` (auth)
+
+Devuelve la lista de todos los mangas ordenados por fecha de creación descendente.
+
+#### GET `/manga/:mangaId` (auth)
+
+Devuelve un manga por id. Devuelve 404 si no existe.
+
+#### GET `/manga/:mangaId/volumes` (auth)
+
+Devuelve los volúmenes de un manga ordenados por número ascendente.
+
+#### POST `/manga/` (admin)
+
+Body:
+
+```json
+{
+  "title": "Berserk",
+  "author": "Kentaro Miura"
+}
+```
+
+`author` es opcional.
+
+#### POST `/manga/:mangaId/volumes` (admin)
+
+Body:
+
+```json
+{
+  "number": 1,
+  "title": "El halcón del milenio"
+}
+```
+
+`title` es opcional.
+
+Errores posibles:
+
+- `404 MANGA_NOT_FOUND` — el manga no existe.
+- `409 VOLUME_NUMBER_DUPLICATE` — ya existe un volumen con ese número en el manga.
+
+#### POST `/manga/:mangaId/volumes/:volumeId/upload` (admin)
+
+Subida de páginas via `multipart/form-data`. Los archivos se ordenan naturalmente por nombre original antes de ser renombrados a índices con padding: `001.jpeg`, `002.jpeg`, etc.
+
+Errores posibles:
+
+- `400 NO_FILES_UPLOADED` — no se envió ningún archivo.
+- `404 MANGA_NOT_FOUND` — el manga no existe.
+- `404 VOLUME_NOT_FOUND` — el volumen no existe.
+
+#### GET `/manga/:mangaId/volumes/:volumeId/pages` (auth)
+
+Devuelve metadata del volumen y listado de páginas con sus URLs de imagen.
+
+Respuesta de ejemplo:
+
+```json
+{
+  "volume": {
+    "id": "cly...",
+    "number": 1,
+    "title": "El halcón del milenio",
+    "pagesCount": 213,
+    "status": "READY"
+  },
+  "pages": [
+    { "index": 1, "imageUrl": "/manga/.../volumes/.../pages/1/image" },
+    { "index": 2, "imageUrl": "/manga/.../volumes/.../pages/2/image" }
+  ]
+}
+```
+
+#### GET `/manga/:mangaId/volumes/:volumeId/pages/:pageNumber/image` (auth)
+
+Streaming de la imagen de una página. Devuelve `image/jpeg` con cache de 24 h (`private, max-age=86400`).
+
+Errores posibles:
+
+- `404 VOLUME_NOT_FOUND`
+- `404 PAGE_NOT_FOUND`
+- `404 PAGE_FILE_NOT_FOUND` — el registro existe en DB pero el archivo fue eliminado del disco.
+
+### Progreso de lectura
+
+#### GET `/manga/:mangaId/progress` (auth)
+
+Devuelve el progreso del usuario en un manga, o `null` si no hay progreso registrado.
+
+Respuesta de ejemplo:
+
+```json
+{
+  "mangaId": "clx...",
+  "volumeId": "cly...",
+  "page": 42,
+  "updatedAt": "2026-03-19T10:00:00.000Z"
+}
+```
+
+#### POST `/manga/:mangaId/progress` (auth)
+
+Guarda o avanza el progreso de lectura. El progreso nunca retrocede dentro del mismo volumen; cambiar de volumen siempre avanza.
+
+Body:
+
+```json
+{
+  "volumeId": "cly...",
+  "page": 42
+}
+```
+
+Validaciones:
+
+- El manga debe existir → `404 MANGA_NOT_FOUND`
+- El volumen debe existir y pertenecer al manga → `404 VOLUME_NOT_FOUND`
+- La página no puede ser mayor que `pagesCount` del volumen → `422 PAGE_OUT_OF_RANGE`
+
+#### GET `/users/me/continue-reading` (auth)
+
+Devuelve los últimos 10 progresos del usuario ordenados por `updatedAt` descendente (continuar leyendo).
+
+### Sesiones de lectura
+
+#### POST `/reading/sessions/start` (auth)
+
+Inicia una nueva sesión de lectura. Si ya existe una sesión abierta para el usuario, la cierra automáticamente con el tiempo transcurrido antes de crear la nueva.
+
+Body:
+
+```json
+{
+  "contentType": "MANGA",
+  "contentId": "clx..."
+}
+```
+
+`contentType` acepta `"MANGA"` o `"BOOK"`.
+
+#### POST `/reading/sessions/:sessionId/end` (auth)
+
+Cierra una sesión y guarda la duración en segundos. Si ya estaba cerrada devuelve la sesión sin modificarla (idempotente).
+
+#### GET `/users/me/reading-stats` (auth)
+
+Devuelve el tiempo total de lectura del usuario en segundos, desglosado por tipo de contenido.
+
+Respuesta de ejemplo:
+
+```json
+{
+  "totalSeconds": 7200,
+  "mangaSeconds": 5400,
+  "bookSeconds": 1800
+}
+```
 
 - Lista mangas (ordenados por `createdAt desc`)
 
