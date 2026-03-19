@@ -4,6 +4,8 @@ import { MangaProgressService } from "../../../src/modules/reading/manga-progres
 describe("MangaProgressService (unit)", () => {
   const repo = {
     findByUserAndManga: vi.fn(),
+    findMangaById: vi.fn(),
+    findVolumeById: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     getContinueReading: vi.fn(),
@@ -14,6 +16,9 @@ describe("MangaProgressService (unit)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     service = new MangaProgressService(repo as any);
+    // Happy-path defaults for the new validation mocks; override per test for error cases.
+    repo.findMangaById.mockResolvedValue({ id: "manga-1" });
+    repo.findVolumeById.mockResolvedValue({ id: "vol-1", mangaId: "manga-1", pagesCount: 100 });
   });
 
   it("getProgress() should return null when no progress exists", async () => {
@@ -131,6 +136,39 @@ describe("MangaProgressService (unit)", () => {
       page: 1,
     });
     expect(result.page).toBe(1);
+  });
+
+  it("updateProgress() should throw MANGA_NOT_FOUND when manga does not exist", async () => {
+    repo.findMangaById.mockResolvedValue(null);
+
+    await expect(
+      service.updateProgress("user-1", "manga-x", "vol-1", 5)
+    ).rejects.toMatchObject({ code: "MANGA_NOT_FOUND" });
+    expect(repo.create).not.toHaveBeenCalled();
+  });
+
+  it("updateProgress() should throw VOLUME_NOT_FOUND when volume does not exist", async () => {
+    repo.findVolumeById.mockResolvedValue(null);
+
+    await expect(
+      service.updateProgress("user-1", "manga-1", "vol-x", 5)
+    ).rejects.toMatchObject({ code: "VOLUME_NOT_FOUND" });
+  });
+
+  it("updateProgress() should throw VOLUME_NOT_FOUND when volume belongs to a different manga", async () => {
+    repo.findVolumeById.mockResolvedValue({ id: "vol-1", mangaId: "manga-2", pagesCount: 100 });
+
+    await expect(
+      service.updateProgress("user-1", "manga-1", "vol-1", 5)
+    ).rejects.toMatchObject({ code: "VOLUME_NOT_FOUND" });
+  });
+
+  it("updateProgress() should throw PAGE_OUT_OF_RANGE when page exceeds pagesCount", async () => {
+    repo.findVolumeById.mockResolvedValue({ id: "vol-1", mangaId: "manga-1", pagesCount: 20 });
+
+    await expect(
+      service.updateProgress("user-1", "manga-1", "vol-1", 21)
+    ).rejects.toMatchObject({ code: "PAGE_OUT_OF_RANGE" });
   });
 
   it("getContinueReading() should delegate to repository", async () => {

@@ -44,13 +44,16 @@ describe("MangaProgress routes (api)", () => {
     const manga = await prisma.manga.create({
       data: { title: "Naruto" },
     });
+    const volume = await prisma.volume.create({
+      data: { mangaId: manga.id, number: 1, status: "READY", pagesCount: 50 },
+    });
 
     const response = await app.inject({
       method: "POST",
       url: `/manga/${manga.id}/progress`,
       headers: buildAuthHeader(app, "USER"),
       payload: {
-        volumeId: "vol-1",
+        volumeId: volume.id,
         page: 10,
       },
     });
@@ -58,7 +61,7 @@ describe("MangaProgress routes (api)", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
       mangaId: manga.id,
-      volumeId: "vol-1",
+      volumeId: volume.id,
       page: 10,
     });
   });
@@ -67,19 +70,22 @@ describe("MangaProgress routes (api)", () => {
     const manga = await prisma.manga.create({
       data: { title: "Bleach" },
     });
+    const volume = await prisma.volume.create({
+      data: { mangaId: manga.id, number: 1, status: "READY", pagesCount: 50 },
+    });
 
     await app.inject({
       method: "POST",
       url: `/manga/${manga.id}/progress`,
       headers: buildAuthHeader(app, "USER"),
-      payload: { volumeId: "vol-1", page: 20 },
+      payload: { volumeId: volume.id, page: 20 },
     });
 
     const response = await app.inject({
       method: "POST",
       url: `/manga/${manga.id}/progress`,
       headers: buildAuthHeader(app, "USER"),
-      payload: { volumeId: "vol-1", page: 5 },
+      payload: { volumeId: volume.id, page: 5 },
     });
 
     expect(response.statusCode).toBe(200);
@@ -90,19 +96,22 @@ describe("MangaProgress routes (api)", () => {
     const manga = await prisma.manga.create({
       data: { title: "One Piece" },
     });
+    const volume = await prisma.volume.create({
+      data: { mangaId: manga.id, number: 1, status: "READY", pagesCount: 50 },
+    });
 
     await app.inject({
       method: "POST",
       url: `/manga/${manga.id}/progress`,
       headers: buildAuthHeader(app, "USER"),
-      payload: { volumeId: "vol-1", page: 5 },
+      payload: { volumeId: volume.id, page: 5 },
     });
 
     const response = await app.inject({
       method: "POST",
       url: `/manga/${manga.id}/progress`,
       headers: buildAuthHeader(app, "USER"),
-      payload: { volumeId: "vol-1", page: 25 },
+      payload: { volumeId: volume.id, page: 25 },
     });
 
     expect(response.statusCode).toBe(200);
@@ -113,35 +122,44 @@ describe("MangaProgress routes (api)", () => {
     const manga = await prisma.manga.create({
       data: { title: "Dandadan" },
     });
+    const vol1 = await prisma.volume.create({
+      data: { mangaId: manga.id, number: 1, status: "READY", pagesCount: 50 },
+    });
+    const vol2 = await prisma.volume.create({
+      data: { mangaId: manga.id, number: 2, status: "READY", pagesCount: 50 },
+    });
 
     await app.inject({
       method: "POST",
       url: `/manga/${manga.id}/progress`,
       headers: buildAuthHeader(app, "USER"),
-      payload: { volumeId: "vol-1", page: 50 },
+      payload: { volumeId: vol1.id, page: 50 },
     });
 
     const response = await app.inject({
       method: "POST",
       url: `/manga/${manga.id}/progress`,
       headers: buildAuthHeader(app, "USER"),
-      payload: { volumeId: "vol-2", page: 1 },
+      payload: { volumeId: vol2.id, page: 1 },
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({ volumeId: "vol-2", page: 1 });
+    expect(response.json()).toMatchObject({ volumeId: vol2.id, page: 1 });
   });
 
   it("GET /manga/:mangaId/progress should return existing progress", async () => {
     const manga = await prisma.manga.create({
       data: { title: "Dragon Ball" },
     });
+    const volume = await prisma.volume.create({
+      data: { mangaId: manga.id, number: 1, status: "READY", pagesCount: 50 },
+    });
 
     await app.inject({
       method: "POST",
       url: `/manga/${manga.id}/progress`,
       headers: buildAuthHeader(app, "USER"),
-      payload: { volumeId: "vol-3", page: 42 },
+      payload: { volumeId: volume.id, page: 42 },
     });
 
     const response = await app.inject({
@@ -153,7 +171,7 @@ describe("MangaProgress routes (api)", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
       mangaId: manga.id,
-      volumeId: "vol-3",
+      volumeId: volume.id,
       page: 42,
     });
   });
@@ -173,12 +191,15 @@ describe("MangaProgress routes (api)", () => {
     const manga = await prisma.manga.create({
       data: { title: "Spy x Family" },
     });
+    const volume = await prisma.volume.create({
+      data: { mangaId: manga.id, number: 1, status: "READY", pagesCount: 10 },
+    });
 
     await app.inject({
       method: "POST",
       url: `/manga/${manga.id}/progress`,
       headers: buildAuthHeader(app, "USER"),
-      payload: { volumeId: "vol-1", page: 3 },
+      payload: { volumeId: volume.id, page: 3 },
     });
 
     const response = await app.inject({
@@ -202,7 +223,7 @@ describe("MangaProgress routes (api)", () => {
     expect(response.statusCode).toBe(401);
   });
 
-  it("POST /manga/:mangaId/progress should require auth", async () => {
+  it("POST /manga/:mangaId/progress should return 401 when unauthenticated", async () => {
     const response = await app.inject({
       method: "POST",
       url: "/manga/some-id/progress",
@@ -210,6 +231,49 @@ describe("MangaProgress routes (api)", () => {
     });
 
     expect(response.statusCode).toBe(401);
+  });
+
+  it("POST /manga/:mangaId/progress should return 404 when manga does not exist", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/manga/non-existent-manga-id/progress",
+      headers: buildAuthHeader(app, "USER"),
+      payload: { volumeId: "any", page: 1 },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ code: "MANGA_NOT_FOUND" });
+  });
+
+  it("POST /manga/:mangaId/progress should return 404 when volume does not exist", async () => {
+    const manga = await prisma.manga.create({ data: { title: "Test Manga" } });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/manga/${manga.id}/progress`,
+      headers: buildAuthHeader(app, "USER"),
+      payload: { volumeId: "non-existent-volume-id", page: 1 },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ code: "VOLUME_NOT_FOUND" });
+  });
+
+  it("POST /manga/:mangaId/progress should return 422 when page exceeds volume pagesCount", async () => {
+    const manga = await prisma.manga.create({ data: { title: "Test Manga" } });
+    const volume = await prisma.volume.create({
+      data: { mangaId: manga.id, number: 1, status: "READY", pagesCount: 10 },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/manga/${manga.id}/progress`,
+      headers: buildAuthHeader(app, "USER"),
+      payload: { volumeId: volume.id, page: 11 },
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toMatchObject({ code: "PAGE_OUT_OF_RANGE" });
   });
 
   it("GET /users/me/continue-reading should require auth", async () => {

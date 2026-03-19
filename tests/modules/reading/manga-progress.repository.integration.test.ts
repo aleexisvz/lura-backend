@@ -110,4 +110,36 @@ describe("MangaProgressRepository (integration)", () => {
         expect(first.mangaId).toBe(manga2.id);
         expect(second.mangaId).toBe(mangaId);
     });
+
+    it("findMangaById() should return the manga when it exists", async () => {
+        const found = await repo.findMangaById(mangaId);
+
+        expect(found).toBeTruthy();
+        expect(found?.id).toBe(mangaId);
+    });
+
+    it("findMangaById() should return null for an unknown id", async () => {
+        const found = await repo.findMangaById("non-existent-id");
+
+        expect(found).toBeNull();
+    });
+
+    it("findVolumeById() should return the volume when it exists", async () => {
+        const volume = await prisma.volume.create({
+            data: { mangaId, number: 1, status: "READY", pagesCount: 30 },
+        });
+
+        const found = await repo.findVolumeById(volume.id);
+
+        expect(found).toBeTruthy();
+        expect(found?.id).toBe(volume.id);
+        expect(found?.mangaId).toBe(mangaId);
+        expect(found?.pagesCount).toBe(30);
+    });
+
+    it("findVolumeById() should return null for an unknown id", async () => {
+        const found = await repo.findVolumeById("non-existent-id");
+
+        expect(found).toBeNull();
+    });
 });
