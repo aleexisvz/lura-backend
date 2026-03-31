@@ -40,6 +40,10 @@ export class LocalStorageService {
     return fs.createReadStream(filepath);
   }
 
+  async getFileStats(filepath: string) {
+    return fs.promises.stat(filepath);
+  }
+
   resolveMangaPagePath(mangaId: string, volumeId: string, filename: string) {
     // Canonical layout on disk:
     // storage/manga/<mangaId>/volumes/<volumeId>/pages/<filename>
