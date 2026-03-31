@@ -177,7 +177,6 @@ export class MangaService {
 
   async streamPageImage(
     reply: FastifyReply,
-    userId: string,
     mangaId: string,
     volumeId: string,
     pageIndex: number
