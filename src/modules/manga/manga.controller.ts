@@ -81,23 +81,20 @@ export class MangaController {
 
   listVolumePages = async (req: FastifyRequest, reply: FastifyReply) => {
     const { mangaId, volumeId } = MangaVolumeParamsSchema.parse(req.params);
-    const userId = (req.user as any).sub;
 
-    const result = await this.service.listVolumePages(userId, mangaId, volumeId);
+    const result = await this.service.listVolumePages(mangaId, volumeId);
 
     return reply.send(result);
   };
 
   streamPageImage = async (req: FastifyRequest, reply: FastifyReply) => {
     const { mangaId, volumeId, pageNumber } = PageImageParamsSchema.parse(req.params);
-    const userId = (req.user as any).sub;
 
     return this.service.streamPageImage(
       reply,
-      userId,
       mangaId,
       volumeId,
-      pageNumber
+      Number(pageNumber)
     );
   };
 }

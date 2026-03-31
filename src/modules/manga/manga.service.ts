@@ -148,7 +148,7 @@ export class MangaService {
     }
   }
 
-  async listVolumePages(userId: string, mangaId: string, volumeId: string) {
+  async listVolumePages(mangaId: string, volumeId: string) {
     const volume = await this.repo.findVolumeById(volumeId);
 
     if (!volume || volume.mangaId !== mangaId) {
