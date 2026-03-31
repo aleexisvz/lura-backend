@@ -13,51 +13,29 @@ export async function mangaRoutes(app: FastifyInstance) {
   const service = new MangaService(repo, storage)
   const controller = new MangaController(service)
 
-  app.get(
-    "/",
-    { preHandler: [requireAuth] },
-    controller.getAllMangas
-  )
+  app.post("/", { preHandler: requireAdmin }, controller.createManga);
 
-  app.get(
-    "/:mangaId",
-    { preHandler: [requireAuth] },
-    controller.getMangaById
-  )
-
-  app.get(
-    "/:mangaId/volumes",
-    { preHandler: [requireAuth] },
-    controller.getVolumesByMangaId
-  )
-
-  app.post(
-    "/",
-    { preHandler: [requireAdmin] },
-    controller.createManga
-  )
-
-  app.post(
-    "/:mangaId/volumes",
-    { preHandler: [requireAdmin] },
-    controller.createVolume
-  )
+  app.post("/:mangaId/volumes", { preHandler: requireAdmin }, controller.createVolume);
 
   app.post(
     "/:mangaId/volumes/:volumeId/upload",
-    { preHandler: [requireAdmin] },
+    { preHandler: requireAdmin },
     controller.uploadPages
-  )
+  );
+
+  app.get("/", { preHandler: requireAuth }, controller.getAllMangas);
+  app.get("/:mangaId", { preHandler: requireAuth }, controller.getMangaById);
+  app.get("/:mangaId/volumes", { preHandler: requireAuth }, controller.listVolumes);
 
   app.get(
     "/:mangaId/volumes/:volumeId/pages",
-    { preHandler: [requireAuth] },
+    { preHandler: requireAuth },
     controller.listVolumePages
   );
 
   app.get(
     "/:mangaId/volumes/:volumeId/pages/:pageNumber/image",
-    { preHandler: [requireAuth] },
+    { preHandler: requireAuth },
     controller.streamPageImage
   );
 }

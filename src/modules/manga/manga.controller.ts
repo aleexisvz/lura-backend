@@ -36,6 +36,12 @@ export class MangaController {
     return reply.send(mangas);
   }
 
+  listVolumes = async (req: FastifyRequest, reply: FastifyReply) => {
+    const { mangaId } = MangaIdParamsSchema.parse(req.params);
+    const volumes = await this.service.getVolumesByMangaId(mangaId);
+    return reply.send(volumes);
+  }
+
   getMangaById = async (req: FastifyRequest, reply: FastifyReply) => {
     const { mangaId } = MangaIdParamsSchema.parse(req.params);
     const manga = await this.service.getMangaById(mangaId);
@@ -45,13 +51,6 @@ export class MangaController {
     }
 
     return reply.send(manga);
-  }
-
-
-  getVolumesByMangaId = async (req: FastifyRequest, reply: FastifyReply) => {
-    const { mangaId } = MangaIdParamsSchema.parse(req.params);
-    const volumes = await this.service.getVolumesByMangaId(mangaId);
-    return reply.send(volumes);
   }
 
   createManga = async (req: FastifyRequest, reply: FastifyReply) => {
