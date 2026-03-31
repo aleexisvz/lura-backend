@@ -16,7 +16,7 @@ export class MangaService {
   ) { }
 
   async getAllMangas() {
-    return this.repo.getAllMangas()
+    return this.repo.findAllMangas()
   }
 
   async getMangaById(id: string) {

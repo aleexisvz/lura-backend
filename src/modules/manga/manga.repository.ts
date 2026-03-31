@@ -2,7 +2,7 @@ import { prisma } from "../../infrastructure/database/prisma.js"
 
 export class MangaRepository {
 
-  getAllMangas() {
+  findAllMangas() {
     return prisma.manga.findMany({
       orderBy: {
         createdAt: "desc",

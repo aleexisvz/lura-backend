@@ -45,7 +45,7 @@ describe("MangaRepository (integration)", () => {
       },
     });
 
-    const mangas = await repo.getAllMangas();
+    const mangas = await repo.findAllMangas();
 
     expect(mangas.map((manga) => manga.title)).toEqual([
       "Newer manga",
