@@ -3,7 +3,7 @@ import { MangaService } from "../../../src/modules/manga/manga.service.js";
 
 describe("MangaService (unit)", () => {
   const repo = {
-    getAllMangas: vi.fn(),
+    findAllMangas: vi.fn(),
     findMangaById: vi.fn(),
     findVolumesByMangaId: vi.fn(),
     createManga: vi.fn(),
@@ -29,11 +29,11 @@ describe("MangaService (unit)", () => {
   });
 
   it("getAllMangas() should return repository list", async () => {
-    repo.getAllMangas.mockResolvedValue([{ id: "m-1", title: "One Piece" }]);
+    repo.findAllMangas.mockResolvedValue([{ id: "m-1", title: "One Piece" }]);
 
     const result = await service.getAllMangas();
 
-    expect(repo.getAllMangas).toHaveBeenCalledTimes(1);
+    expect(repo.findAllMangas).toHaveBeenCalledTimes(1);
     expect(result).toEqual([{ id: "m-1", title: "One Piece" }]);
   });
 

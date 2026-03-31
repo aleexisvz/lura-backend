@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import type { FastifyInstance } from "fastify";
 import { AuthRepository } from "./auth.repository.js";
 import type { AuthResponseDTO, LoginDTO, RegisterDTO } from "./auth.types.js";
-import { AppError } from "../../shared/errors/AppError.js";
+import { conflict, unauthorized } from "../../shared/errors/error-factory.js";
 
 export class AuthService {
   constructor(
@@ -19,11 +19,7 @@ export class AuthService {
 
     const existing = await this.repo.findUserByEmail(email);
     if (existing) {
-      throw new AppError({
-        code: "EMAIL_ALREADY_IN_USE",
-        statusCode: 409,
-        message: "Email already in use",
-      });
+      throw conflict("EMAIL_ALREADY_IN_USE", "Email already in use");
     }
 
     // Salt rounds = 10 is the bcrypt default and a good balance between
@@ -49,20 +45,12 @@ export class AuthService {
     if (!user) {
       // Return the same error code for "user not found" and "wrong password"
       // to prevent user enumeration (attackers can't tell which one failed).
-      throw new AppError({
-        code: "INVALID_CREDENTIALS",
-        statusCode: 401,
-        message: "Invalid credentials",
-      });
+      throw unauthorized("INVALID_CREDENTIALS", "Invalid credentials");
     }
 
     const ok = await bcrypt.compare(dto.password, user.password);
     if (!ok) {
-      throw new AppError({
-        code: "INVALID_CREDENTIALS",
-        statusCode: 401,
-        message: "Invalid credentials",
-      });
+      throw unauthorized("INVALID_CREDENTIALS", "Invalid credentials");
     }
 
     const token = this.app.jwt.sign(
