@@ -6,6 +6,7 @@ import { MangaRepository } from "./manga.repository.js";
 import { LocalStorageService } from "../../infrastructure/storage/LocalStorageService.js";
 import { naturalSortByFilename } from "../../shared/utils/natural-sort.js";
 import { AppError } from "../../shared/errors/AppError.js";
+import { getImageContentType } from "../../shared/utils/get-image-content-type.js";
 
 export class MangaService {
 
@@ -150,7 +151,7 @@ export class MangaService {
   async listVolumePages(userId: string, mangaId: string, volumeId: string) {
     const volume = await this.repo.findVolumeById(volumeId);
 
-    if (!volume) {
+    if (!volume || volume.mangaId !== mangaId) {
       throw new AppError({
         code: "VOLUME_NOT_FOUND",
         statusCode: 404,
@@ -183,7 +184,7 @@ export class MangaService {
   ) {
     const volume = await this.repo.findVolumeById(volumeId);
 
-    if (!volume) {
+    if (!volume || volume.mangaId !== mangaId) {
       throw new AppError({
         code: "VOLUME_NOT_FOUND",
         statusCode: 404,
@@ -212,7 +213,12 @@ export class MangaService {
       });
     }
 
-    reply.header("Content-Type", "image/jpeg");
+    const stats = await this.storage.getFileStats(filepath);
+    const contentType = getImageContentType(page.filename);
+
+    reply.header("Content-Type", contentType);
+    reply.header("Content-Length", stats.size.toString());
+    reply.header("Last-Modified", stats.mtime.toUTCString());
     // Cache for 24 h on the client only (private) — pages never change once
     // uploaded, so long-lived caching is safe; "private" prevents CDN caching
     // of potentially user-restricted content.
