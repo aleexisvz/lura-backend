@@ -8,6 +8,10 @@ export async function authRoutes(app: FastifyInstance) {
   const service = new AuthService(repo, app);
   const controller = new AuthController(service);
 
-  app.post("/register", controller.register);
-  app.post("/login", controller.login);
+  const strictRateLimit = {
+    rateLimit: { max: 10, timeWindow: "1 minute" },
+  };
+
+  app.post("/register", { config: strictRateLimit }, controller.register);
+  app.post("/login", { config: strictRateLimit }, controller.login);
 }

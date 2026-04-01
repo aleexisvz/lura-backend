@@ -71,7 +71,7 @@ describe("ReadingSessionService (unit)", () => {
 
     await expect(
       service.endSession("user-1", "missing-session")
-    ).rejects.toThrow("READING_SESSION_NOT_FOUND");
+    ).rejects.toThrow("Reading session not found");
   });
 
   it("endSession() should throw when user doesn't own session", async () => {
@@ -83,7 +83,7 @@ describe("ReadingSessionService (unit)", () => {
 
     await expect(
       service.endSession("user-1", "session-1")
-    ).rejects.toThrow("READING_SESSION_FORBIDDEN");
+    ).rejects.toThrow("Access denied to this reading session");
   });
 
   it("endSession() should return already ended session without update", async () => {
