@@ -1,4 +1,5 @@
 import { ReadingSessionRepository } from "./reading-session.repository.js";
+import { AppError } from "../../shared/errors/AppError.js";
 
 export class ReadingSessionService {
     constructor(private repo: ReadingSessionRepository) { }
@@ -39,11 +40,19 @@ export class ReadingSessionService {
         const session = await this.repo.findById(sessionId);
 
         if (!session) {
-            throw new Error("READING_SESSION_NOT_FOUND");
+            throw new AppError({
+                code: "READING_SESSION_NOT_FOUND",
+                statusCode: 404,
+                message: "Reading session not found",
+            });
         }
 
         if (session.userId !== userId) {
-            throw new Error("READING_SESSION_FORBIDDEN");
+            throw new AppError({
+                code: "READING_SESSION_FORBIDDEN",
+                statusCode: 403,
+                message: "Access denied to this reading session",
+            });
         }
 
         // Idempotent: if endedAt is already set just return the session

@@ -1,8 +1,14 @@
 # Ignore storage directory
 storage/
 node_modules
+
 # Keep environment variables out of version control
 .env
 
+# Skills and agents data
+.agents/
+skills-lock.json
+
+# Ignore generated Prisma client
 /generated/prisma
 /Markdown
