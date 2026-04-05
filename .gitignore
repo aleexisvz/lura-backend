@@ -7,7 +7,6 @@ node_modules
 
 # Skills and agents data
 .agents/
-skills-lock.json
 
 # Ignore generated Prisma client
 /generated/prisma
