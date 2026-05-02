@@ -25,5 +25,9 @@ const testDatabaseUrl =
 process.env["NODE_ENV"] = "test";
 process.env["DATABASE_URL_TEST"] = testDatabaseUrl;
 process.env["DATABASE_URL"] = testDatabaseUrl;
-process.env["JWT_SECRET"] = process.env["JWT_SECRET"] ?? "test-secret-12345";
+const jwtSecret = process.env["JWT_SECRET"];
+process.env["JWT_SECRET"] =
+  typeof jwtSecret === "string" && jwtSecret.length >= 10
+    ? jwtSecret
+    : "test-secret-12345";
 process.env["JWT_EXPIRES_IN"] = process.env["JWT_EXPIRES_IN"] ?? "15m";
