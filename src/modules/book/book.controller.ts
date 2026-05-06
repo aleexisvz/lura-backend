@@ -31,4 +31,10 @@ export class BookController {
     const book = await this.service.createBook(body);
     return reply.send(book);
   };
+
+  uploadEpub = async (req: FastifyRequest, reply: FastifyReply) => {
+    const { bookId } = BookIdParamsSchema.parse(req.params);
+    const result = await this.service.uploadEpub(req, bookId);
+    return reply.send(result);
+  };
 }

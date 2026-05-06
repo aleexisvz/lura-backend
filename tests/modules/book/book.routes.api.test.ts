@@ -82,6 +82,74 @@ describe("Book routes (api)", () => {
     );
   });
 
+  it("POST /books/:bookId/upload-epub should require auth", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/books/some-book/upload-epub",
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toMatchObject({
+      code: "UNAUTHORIZED",
+      message: expect.any(String),
+      details: null,
+    });
+  });
+
+  it("POST /books/:bookId/upload-epub should reject non-admin users", async () => {
+    const book = await prisma.book.create({
+      data: { title: "Dune" },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/books/${book.id}/upload-epub`,
+      headers: buildAuthHeader(app, "USER"),
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual(
+      expect.objectContaining({
+        code: "ADMIN_ONLY",
+      })
+    );
+  });
+
+  it("POST /books/:bookId/upload-epub should return 404 for unknown book", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/books/missing-book-id/upload-epub",
+      headers: buildAuthHeader(app, "ADMIN"),
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual(
+      expect.objectContaining({
+        code: "BOOK_NOT_FOUND",
+        message: "Book not found",
+      })
+    );
+  });
+
+  it("POST /books/:bookId/upload-epub should return 400 when file is missing", async () => {
+    const book = await prisma.book.create({
+      data: { title: "Dune" },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/books/${book.id}/upload-epub`,
+      headers: buildAuthHeader(app, "ADMIN"),
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual(
+      expect.objectContaining({
+        code: "NO_FILES_UPLOADED",
+      })
+    );
+  });
+
   it("GET /books should return all books ordered by createdAt desc", async () => {
     await prisma.book.create({
       data: {

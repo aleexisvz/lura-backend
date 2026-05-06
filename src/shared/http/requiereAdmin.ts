@@ -1,8 +1,9 @@
 import type { FastifyRequest } from "fastify";
 import { forbidden } from "../errors/error-factory.js";
+import { requireAuth } from "./auth.js";
 
 export async function requireAdmin(req: FastifyRequest) {
-  await req.jwtVerify();
+  await requireAuth(req);
 
   const user = req.user as any;
 

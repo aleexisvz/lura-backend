@@ -60,4 +60,10 @@ export class LocalStorageService {
     );
   }
 
+  resolveBookEpubPath(bookId: string) {
+    // Canonical layout on disk:
+    // storage/books/<bookId>/book.epub
+    return path.join(process.cwd(), "storage", "books", bookId, "book.epub");
+  }
+
 }

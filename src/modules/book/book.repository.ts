@@ -19,4 +19,11 @@ export class BookRepository {
       data,
     });
   }
+
+  updateBookEpubPath(bookId: string, epubPath: string) {
+    return prisma.book.update({
+      where: { id: bookId },
+      data: { epubPath },
+    });
+  }
 }
