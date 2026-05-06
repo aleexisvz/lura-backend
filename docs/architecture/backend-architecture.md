@@ -1,22 +1,18 @@
-# Lura — Backend Architecture
+# Lura - Backend Architecture
 
 ## Structure
 
-backend/src/
+src/
 
+config/
+infrastructure/
 modules/
   auth/
+  book/ (scaffold)
+  collections/ (scaffold)
   manga/
   reading/
-
 shared/
-  errors/
-  utils/
-  http/
-
-infrastructure/
-  database/
-  storage/
 
 ---
 
@@ -26,16 +22,16 @@ Modular by feature.
 
 Each module contains:
 
-- controller → HTTP layer
-- service → business logic
-- repository → DB access
-- types/domain → types + rules
+- controller -> HTTP layer
+- service -> business logic
+- repository -> DB access
+- types/domain -> types + rules
 
 ---
 
 ## Flow
 
-Controller → Service → Repository → Prisma
+Controller -> Service -> Repository -> Prisma
 
 ---
 
@@ -54,7 +50,7 @@ Upload flow:
 
 ## Image Serving
 
-- Images are served via API (NOT static)
+- Images are served via API (not static)
 - Uses streaming
 - Uses cache headers
 

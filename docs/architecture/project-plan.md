@@ -1,10 +1,4 @@
-
----
-
-# 📄 `docs/architecture/project-plan.md`
-
-```md
-# Lura — Project Plan
+# Lura - Project Plan
 
 ## Vision
 
@@ -29,14 +23,14 @@ Single library, multiple formats:
 
 ## Content Model
 
-Content is **global**, not user-owned.
+Content is global, not user-owned.
 
 - Admin uploads content
 - All users can access it
 
 ---
 
-## User Features (current + planned)
+## User Features (Current + Planned)
 
 - Reading manga
 - Tracking progress (MangaProgress)
