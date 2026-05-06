@@ -79,7 +79,11 @@ describe("Manga routes (api)", () => {
     });
 
     expect(response.statusCode).toBe(404);
-    expect(response.json()).toEqual({ message: "Manga not found" });
+    expect(response.json()).toEqual({
+      code: "NOT_FOUND",
+      message: "Manga not found",
+      details: null,
+    });
   });
 
   it("POST /manga should create manga for admin", async () => {

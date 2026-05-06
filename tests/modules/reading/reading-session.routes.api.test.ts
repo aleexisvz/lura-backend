@@ -176,6 +176,11 @@ describe("ReadingSession routes (api)", () => {
     });
 
     expect(response.statusCode).toBe(401);
+    expect(response.json()).toMatchObject({
+      code: "UNAUTHORIZED",
+      message: expect.any(String),
+      details: null,
+    });
   });
 
   it("POST /reading/sessions/:sessionId/end should require auth", async () => {
@@ -185,6 +190,11 @@ describe("ReadingSession routes (api)", () => {
     });
 
     expect(response.statusCode).toBe(401);
+    expect(response.json()).toMatchObject({
+      code: "UNAUTHORIZED",
+      message: expect.any(String),
+      details: null,
+    });
   });
 
   it("GET /users/me/reading-stats should require auth", async () => {
@@ -194,5 +204,10 @@ describe("ReadingSession routes (api)", () => {
     });
 
     expect(response.statusCode).toBe(401);
+    expect(response.json()).toMatchObject({
+      code: "UNAUTHORIZED",
+      message: expect.any(String),
+      details: null,
+    });
   });
 });

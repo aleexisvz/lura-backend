@@ -8,6 +8,44 @@ import { AppError } from "./shared/errors/AppError.js";
 import { mangaProgressRoutes } from "./modules/reading/manga-progress.routes.js";
 import { readingSessionRoutes } from "./modules/reading/reading-session.routes.js";
 
+function defaultErrorCodeByStatus(statusCode: number) {
+  if (statusCode >= 500) return "INTERNAL_ERROR";
+  if (statusCode === 401) return "UNAUTHORIZED";
+  if (statusCode === 403) return "FORBIDDEN";
+  if (statusCode === 404) return "NOT_FOUND";
+  return "BAD_REQUEST";
+}
+
+function normalizeErrorPayload(payload: unknown, statusCode: number) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return payload;
+  }
+
+  const body = payload as {
+    code?: unknown;
+    message?: unknown;
+    details?: unknown;
+  };
+
+  const message =
+    typeof body.message === "string"
+      ? body.message
+      : statusCode >= 500
+        ? "Internal server error"
+        : "Request error";
+
+  const code =
+    typeof body.code === "string"
+      ? body.code
+      : defaultErrorCodeByStatus(statusCode);
+
+  return {
+    code,
+    message,
+    details: body.details ?? null,
+  };
+}
+
 export async function buildApp() {
   const app = Fastify({ logger: true });
 
@@ -15,13 +53,43 @@ export async function buildApp() {
   
   await app.register(mangaProgressRoutes)
   await app.register(readingSessionRoutes)
+
+  app.addHook("preSerialization", async (_request, reply, payload) => {
+    if (reply.statusCode < 400) {
+      return payload;
+    }
+
+    return normalizeErrorPayload(payload, reply.statusCode);
+  });
+
+  app.addHook("onSend", async (_request, reply, payload) => {
+    if (reply.statusCode < 400) {
+      return payload;
+    }
+
+    if (typeof payload !== "string") {
+      return payload;
+    }
+
+    const contentType = reply.getHeader("content-type");
+    if (typeof contentType !== "string" || !contentType.includes("application/json")) {
+      return payload;
+    }
+
+    try {
+      const parsed = JSON.parse(payload);
+      return JSON.stringify(normalizeErrorPayload(parsed, reply.statusCode));
+    } catch {
+      return payload;
+    }
+  });
   
   app.setErrorHandler((error, req, reply) => {
     if (error instanceof AppError) {
       return reply.status(error.statusCode).send({
         code: error.code,
         message: error.message,
-        details: error.details,
+        details: error.details ?? null,
       });
     }
 
@@ -40,6 +108,7 @@ export async function buildApp() {
       return reply.status(409).send({
         code: "CONFLICT",
         message: "Resource already exists",
+        details: null,
       });
     }
 
@@ -47,12 +116,25 @@ export async function buildApp() {
       const statusCode = (error as { statusCode: number }).statusCode;
       if (statusCode >= 400 && statusCode < 500) {
         const message = error instanceof Error ? error.message : "Request error";
-        return reply.status(statusCode).send({ message });
+        const code =
+          typeof (error as { code?: unknown }).code === "string"
+            ? (error as { code: string }).code
+            : "BAD_REQUEST";
+
+        return reply.status(statusCode).send({
+          code,
+          message,
+          details: null,
+        });
       }
     }
 
     req.log.error(error);
-    return reply.status(500).send({ message: "Internal server error" });
+    return reply.status(500).send({
+      code: "INTERNAL_ERROR",
+      message: "Internal server error",
+      details: null,
+    });
   });
 
   await app.register(authRoutes, { prefix: "/auth" });

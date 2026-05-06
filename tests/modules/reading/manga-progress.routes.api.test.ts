@@ -221,6 +221,11 @@ describe("MangaProgress routes (api)", () => {
     });
 
     expect(response.statusCode).toBe(401);
+    expect(response.json()).toMatchObject({
+      code: "UNAUTHORIZED",
+      message: expect.any(String),
+      details: null,
+    });
   });
 
   it("POST /manga/:mangaId/progress should return 401 when unauthenticated", async () => {
@@ -231,6 +236,11 @@ describe("MangaProgress routes (api)", () => {
     });
 
     expect(response.statusCode).toBe(401);
+    expect(response.json()).toMatchObject({
+      code: "UNAUTHORIZED",
+      message: expect.any(String),
+      details: null,
+    });
   });
 
   it("POST /manga/:mangaId/progress should return 404 when manga does not exist", async () => {
@@ -283,5 +293,10 @@ describe("MangaProgress routes (api)", () => {
     });
 
     expect(response.statusCode).toBe(401);
+    expect(response.json()).toMatchObject({
+      code: "UNAUTHORIZED",
+      message: expect.any(String),
+      details: null,
+    });
   });
 });
