@@ -5,6 +5,7 @@ export async function resetTestDatabase() {
     TRUNCATE TABLE
       "Page",
       "Volume",
+      "Book",
       "MangaProgress",
       "ReadingSession",
       "Manga",

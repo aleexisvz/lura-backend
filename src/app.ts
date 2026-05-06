@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { ZodError } from "zod";
 import { registerPlugins } from "./config/plugins.js";
 import { authRoutes } from "./modules/auth/auth.routes.js";
+import { bookRoutes } from "./modules/book/book.routes.js";
 import { mangaRoutes } from "./modules/manga/manga.routes.js";
 import { AppError } from "./shared/errors/AppError.js";
 import { mangaProgressRoutes } from "./modules/reading/manga-progress.routes.js";
@@ -138,6 +139,7 @@ export async function buildApp() {
   });
 
   await app.register(authRoutes, { prefix: "/auth" });
+  await app.register(bookRoutes, { prefix: "/books" });
 
   await app.register(mangaRoutes, { prefix: "/manga" })
 
