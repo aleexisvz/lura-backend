@@ -11,14 +11,21 @@ describe("MangaProgressService (unit)", () => {
     getContinueReading: vi.fn(),
   };
 
+  const completionRepo = {
+    findByUserAndVolume: vi.fn(),
+    findVolumeIdsByUser: vi.fn(),
+  };
+
   let service: MangaProgressService;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new MangaProgressService(repo as any);
+    service = new MangaProgressService(repo as any, completionRepo as any);
     // Happy-path defaults for the new validation mocks; override per test for error cases.
     repo.findMangaById.mockResolvedValue({ id: "manga-1" });
     repo.findVolumeById.mockResolvedValue({ id: "vol-1", mangaId: "manga-1", pagesCount: 100 });
+    completionRepo.findByUserAndVolume.mockResolvedValue(null);
+    completionRepo.findVolumeIdsByUser.mockResolvedValue([]);
   });
 
   it("getProgress() should return null when no progress exists", async () => {
@@ -46,6 +53,7 @@ describe("MangaProgressService (unit)", () => {
       volumeId: "vol-1",
       page: 15,
       updatedAt: new Date("2026-03-01"),
+      completed: false,
     });
   });
 
@@ -179,7 +187,7 @@ describe("MangaProgressService (unit)", () => {
 
     const result = await service.getContinueReading("user-1");
 
-    expect(repo.getContinueReading).toHaveBeenCalledWith("user-1");
+    expect(repo.getContinueReading).toHaveBeenCalledWith("user-1", 10, []);
     expect(result).toHaveLength(2);
   });
 });

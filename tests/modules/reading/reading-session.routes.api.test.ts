@@ -135,9 +135,13 @@ describe("ReadingSession routes (api)", () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
+      totalSessions: 0,
+      totalMinutes: 0,
       totalSeconds: 0,
       mangaSeconds: 0,
       bookSeconds: 0,
+      totalPagesRead: 0,
+      totalVolumesRead: 0,
     });
   });
 

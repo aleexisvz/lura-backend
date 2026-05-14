@@ -28,7 +28,11 @@ export class BookController {
 
   createBook = async (req: FastifyRequest, reply: FastifyReply) => {
     const body = CreateBookSchema.parse(req.body);
-    const book = await this.service.createBook(body);
+    const book = await this.service.createBook({
+      title: body.title,
+      ...(body.author !== undefined ? { author: body.author } : {}),
+      ...(body.description !== undefined ? { description: body.description } : {}),
+    });
     return reply.send(book);
   };
 

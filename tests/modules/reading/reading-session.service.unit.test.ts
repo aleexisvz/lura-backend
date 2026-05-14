@@ -9,13 +9,31 @@ describe("ReadingSessionService (unit)", () => {
     updateEnd: vi.fn(),
     getTotalReadingTimeByUser: vi.fn(),
     getTotalReadingTimeByUserAndType: vi.fn(),
+    countCompletedByUser: vi.fn(),
+  };
+
+  const progressRepo = {
+    sumPagesReadByUser: vi.fn(),
+  };
+
+  const completionRepo = {
+    totalCompletedByUser: vi.fn(),
   };
 
   let service: ReadingSessionService;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new ReadingSessionService(repo as any);
+    service = new ReadingSessionService(
+      repo as any,
+      progressRepo as any,
+      completionRepo as any
+    );
+    repo.countCompletedByUser.mockResolvedValue(0);
+    progressRepo.sumPagesReadByUser.mockResolvedValue({
+      _sum: { page: 0, historicalPagesRead: 0 },
+    });
+    completionRepo.totalCompletedByUser.mockResolvedValue(0);
   });
 
   it("startSession() should create new session when no open session", async () => {
@@ -131,12 +149,22 @@ describe("ReadingSessionService (unit)", () => {
       .mockResolvedValueOnce({ _sum: { durationSeconds: 2400 } })
       .mockResolvedValueOnce({ _sum: { durationSeconds: 1200 } });
 
+    repo.countCompletedByUser.mockResolvedValue(3);
+    progressRepo.sumPagesReadByUser.mockResolvedValue({
+      _sum: { page: 120, historicalPagesRead: 30 },
+    });
+    completionRepo.totalCompletedByUser.mockResolvedValue(7);
+
     const result = await service.getUserReadingStats("user-1");
 
     expect(result).toEqual({
+      totalSessions: 3,
+      totalMinutes: 60,
       totalSeconds: 3600,
       mangaSeconds: 2400,
       bookSeconds: 1200,
+      totalPagesRead: 150,
+      totalVolumesRead: 7,
     });
   });
 
@@ -147,13 +175,22 @@ describe("ReadingSessionService (unit)", () => {
     repo.getTotalReadingTimeByUserAndType.mockResolvedValue({
       _sum: { durationSeconds: null },
     });
+    repo.countCompletedByUser.mockResolvedValue(0);
+    progressRepo.sumPagesReadByUser.mockResolvedValue({
+      _sum: { page: null, historicalPagesRead: null },
+    });
+    completionRepo.totalCompletedByUser.mockResolvedValue(0);
 
     const result = await service.getUserReadingStats("user-1");
 
     expect(result).toEqual({
+      totalSessions: 0,
+      totalMinutes: 0,
       totalSeconds: 0,
       mangaSeconds: 0,
       bookSeconds: 0,
+      totalPagesRead: 0,
+      totalVolumesRead: 0,
     });
   });
 });
