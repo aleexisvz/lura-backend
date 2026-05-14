@@ -22,4 +22,10 @@ export async function volumeCompletionRoutes(app: FastifyInstance) {
         { preHandler: requireAuth },
         controller.checkCompleted
     );
+
+    app.delete(
+        "/manga/:mangaId/volumes/:volumeId/complete",
+        { preHandler: requireAuth },
+        controller.resetCompletion
+    );
 }

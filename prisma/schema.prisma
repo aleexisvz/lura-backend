@@ -94,6 +94,8 @@ model MangaProgress {
   volumeId String
   page     Int
 
+  historicalPagesRead Int @default(0)
+
   updatedAt DateTime @updatedAt
   
   User   User   @relation(fields: [userId], references: [id])
@@ -129,11 +131,13 @@ enum ReadingContentType {
 }
 
 model VolumeCompletion {
-  id          String   @id @default(cuid())
-  userId      String
-  volumeId    String
-  mangaId     String
-  completedAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  userId         String
+  volumeId       String
+  mangaId        String
+  completedAt    DateTime @default(now())
+  isActive       Boolean  @default(true)
+  timesCompleted Int      @default(1)
 
   User   User   @relation(fields: [userId], references: [id])
   Volume Volume @relation(fields: [volumeId], references: [id])

@@ -85,7 +85,7 @@ export class ReadingSessionService {
             this.repo.getTotalReadingTimeByUserAndType(userId, "BOOK"),
             this.repo.countCompletedByUser(userId),
             this.progressRepo.sumPagesReadByUser(userId),
-            this.completionRepo.countByUser(userId),
+            this.completionRepo.totalCompletedByUser(userId),
         ]);
 
         const totalSeconds = total._sum.durationSeconds ?? 0;
@@ -96,7 +96,7 @@ export class ReadingSessionService {
             totalSeconds,
             mangaSeconds: manga._sum.durationSeconds ?? 0,
             bookSeconds: book._sum.durationSeconds ?? 0,
-            totalPagesRead: pagesSum._sum.page ?? 0,
+            totalPagesRead: (pagesSum._sum.page ?? 0) + (pagesSum._sum.historicalPagesRead ?? 0),
             totalVolumesRead,
         };
     }

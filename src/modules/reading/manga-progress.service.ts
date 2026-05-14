@@ -16,11 +16,14 @@ export class MangaProgressService {
             return null
         }
 
+        const completion = await this.completionRepo.findByUserAndVolume(userId, progress.volumeId)
+
         return {
             mangaId: progress.mangaId,
             volumeId: progress.volumeId,
             page: progress.page,
             updatedAt: progress.updatedAt,
+            completed: completion !== null,
         }
     }
 

@@ -58,7 +58,18 @@ export class MangaProgressRepository {
     sumPagesReadByUser(userId: string) {
         return prisma.mangaProgress.aggregate({
             where: { userId },
-            _sum: { page: true },
+            _sum: { page: true, historicalPagesRead: true },
+        })
+    }
+
+    accumulateAndResetPage(id: string, currentPage: number, volumeId: string) {
+        return prisma.mangaProgress.update({
+            where: { id },
+            data: {
+                historicalPagesRead: { increment: currentPage },
+                page: 1,
+                volumeId,
+            },
         })
     }
 }
