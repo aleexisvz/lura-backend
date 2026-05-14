@@ -12,6 +12,10 @@ const LoginSchema = z.object({
   password: z.string().min(6),
 });
 
+const PromoteSchema = z.object({
+  email: z.string().trim().email(),
+});
+
 export class AuthController {
   constructor(private readonly service: AuthService) {}
 
@@ -25,5 +29,11 @@ export class AuthController {
     const dto = LoginSchema.parse(req.body);
     const result = await this.service.login(dto);
     return reply.send(result);
+  };
+
+  promoteToAdmin = async (req: FastifyRequest, reply: FastifyReply) => {
+    const { email } = PromoteSchema.parse(req.body);
+    const user = await this.service.promoteToAdmin(email);
+    return reply.send(user);
   };
 }

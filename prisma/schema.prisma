@@ -76,6 +76,8 @@ model Page {
   filename String
 
   Volume Volume @relation(fields: [volumeId], references: [id])
+
+  @@unique([volumeId, index])
 }
 
 enum VolumeStatus {

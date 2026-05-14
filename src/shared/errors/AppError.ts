@@ -27,6 +27,7 @@ export type AppErrorCode =
 	| "PAGE_OUT_OF_RANGE"
 	| "READING_SESSION_NOT_FOUND"
 	| "READING_SESSION_FORBIDDEN"
+	| "USER_NOT_FOUND"
 	| "INTERNAL_SERVER_ERROR";
 
 export class AppError extends Error {

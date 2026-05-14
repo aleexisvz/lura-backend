@@ -124,6 +124,7 @@ export class MangaService {
       })
     }
 
+    await this.repo.deletePagesByVolumeId(volumeId)
     await this.repo.createPages(volumeId, pages)
     // Mark the volume as READY and store the final page count.
     await this.repo.updateVolumeStatus(volumeId, pages.length)

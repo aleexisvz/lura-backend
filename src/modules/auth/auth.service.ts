@@ -2,7 +2,8 @@ import bcrypt from "bcrypt";
 import type { FastifyInstance } from "fastify";
 import { AuthRepository } from "./auth.repository.js";
 import type { AuthResponseDTO, LoginDTO, RegisterDTO } from "./auth.types.js";
-import { conflict, unauthorized } from "../../shared/errors/error-factory.js";
+import { conflict, forbidden, notFound, unauthorized } from "../../shared/errors/error-factory.js";
+import { env } from "../../config/env.js";
 
 export class AuthService {
   constructor(
@@ -61,5 +62,18 @@ export class AuthService {
     // The password field is intentionally omitted from the response —
     // only the public user shape is returned.
     return { token, user: { id: user.id, email: user.email } };
+  }
+
+  async promoteToAdmin(email: string) {
+    if (env.NODE_ENV === "production") {
+      throw forbidden("ADMIN_ONLY", "Not available in production");
+    }
+
+    const existing = await this.repo.findUserByEmail(email.trim().toLowerCase());
+    if (!existing) {
+      throw notFound("USER_NOT_FOUND", "User not found");
+    }
+
+    return this.repo.promoteUserToAdmin(email.trim().toLowerCase());
   }
 }

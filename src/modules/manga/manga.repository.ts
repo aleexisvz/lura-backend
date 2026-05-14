@@ -67,6 +67,10 @@ export class MangaRepository {
     })
   }
 
+  deletePagesByVolumeId(volumeId: string) {
+    return prisma.page.deleteMany({ where: { volumeId } });
+  }
+
   createPages(volumeId: string, pages: { index: number; filename: string }[]) {
     return prisma.page.createMany({
       data: pages.map((p) => ({

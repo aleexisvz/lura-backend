@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { AuthRepository } from "./auth.repository.js";
 import { AuthService } from "./auth.service.js";
 import { AuthController } from "./auth.controller.js";
+import { requireAdmin } from "../../shared/http/requiereAdmin.js";
 
 export async function authRoutes(app: FastifyInstance) {
   const repo = new AuthRepository();
@@ -14,4 +15,5 @@ export async function authRoutes(app: FastifyInstance) {
 
   app.post("/register", { config: strictRateLimit }, controller.register);
   app.post("/login", { config: strictRateLimit }, controller.login);
+  app.post("/promote", { preHandler: requireAdmin }, controller.promoteToAdmin);
 }

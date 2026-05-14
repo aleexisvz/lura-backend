@@ -18,4 +18,12 @@ export class AuthRepository {
       select: { id: true, email: true },
     });
   }
+
+  async promoteUserToAdmin(email: string) {
+    return prisma.user.update({
+      where: { email },
+      data: { role: "ADMIN" },
+      select: { id: true, email: true, role: true },
+    });
+  }
 }
