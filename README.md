@@ -1,32 +1,38 @@
 # Lura Backend
 
-API REST para autenticacion, gestion de manga y streaming de paginas.
+API REST para autenticación, gestión de manga/libros, streaming de páginas y tracking de lectura.
 
-El proyecto usa Fastify + Prisma + PostgreSQL, JWT para auth y almacenamiento local para archivos de paginas.
+Usa Fastify + Prisma + PostgreSQL, JWT para auth y almacenamiento local para archivos de páginas.
 
 ## Estado actual
 
-- Rutas activas en la app: `/auth`, `/manga`, `/reading`
-- Modulos presentes en `src/modules` pero no registrados en `src/app.ts`: `book`, `collections`
+Rutas activas registradas en `src/app.ts`:
 
-## Stack tecnico
+- `/auth` — registro, login
+- `/manga` — CRUD de mangas, volúmenes y páginas
+- `/reading` — sesiones de lectura, stats, progreso de manga, completitud de volúmenes
+- `/book` — CRUD de libros (EPUB)
+- `/collections` — colecciones de usuario
 
-- Node.js + TypeScript (ESM)
-- Fastify
-- Prisma ORM + PostgreSQL
+## Stack técnico
+
+- Node.js 20+ + TypeScript (ESM)
+- Fastify v5
+- Prisma v7 ORM + `@prisma/adapter-pg` + PostgreSQL
 - JWT (`@fastify/jwt`)
 - Subida de archivos multipart (`@fastify/multipart`)
-- CORS (`@fastify/cors`)
+- CORS (`@fastify/cors`) con soporte para todos los métodos HTTP
+- Rate limiting (`@fastify/rate-limit`)
 
 ## Requisitos
 
 - Node.js 20+
+- pnpm 11+
 - PostgreSQL disponible
-- npm
 
 ## Variables de entorno
 
-Crear un archivo `.env` en la raiz:
+Crear un archivo `.env` en la raíz:
 
 ```env
 NODE_ENV=development
@@ -42,61 +48,93 @@ JWT_EXPIRES_IN=15m
 Notas:
 
 - `DATABASE_URL` es obligatoria para Prisma y runtime.
-- `DATABASE_URL_TEST` es opcional. Si no se define, los tests derivan automaticamente `<DATABASE_URL>_test`.
-- `JWT_SECRET` debe tener minimo 10 caracteres.
+- `DATABASE_URL_TEST` es opcional. Si no se define, los tests derivan automáticamente `<DATABASE_URL>_test`.
+- `JWT_SECRET` debe tener mínimo 10 caracteres.
 
-## Instalacion y arranque
+## Instalación y arranque
 
 1. Instalar dependencias:
 
 ```bash
-npm install
+pnpm install
 ```
+
+> Si se pregunta por builds de paquetes nativos (bcrypt, etc.), ejecutar `pnpm approve-builds` y reintentar.
 
 2. Generar cliente Prisma:
 
 ```bash
-npm run prisma:generate
+pnpm run prisma:generate
 ```
 
 3. Ejecutar migraciones:
 
 ```bash
-npm run prisma:migrate
+pnpm run prisma:migrate
 ```
 
 4. Levantar en desarrollo:
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 Servidor por defecto: `http://localhost:3001`
 
 ## Scripts disponibles
 
-- `npm run dev`: inicia el servidor con hot reload (`tsx watch src/server.ts`)
-- `npm test`: ejecuta todos los tests con Vitest
-- `npm run test:watch`: ejecuta tests en modo watch
-- `npm run test:coverage`: ejecuta tests con cobertura
-- `npm run build`: compila TypeScript
-- `npm run start`: ejecuta build compilado (`dist/server.js`)
-- `npm run prisma:generate`: genera Prisma Client
-- `npm run prisma:migrate`: corre migraciones en modo dev
+| Comando | Descripción |
+|---|---|
+| `pnpm run dev` | Inicia el servidor con hot reload (`tsx watch`) |
+| `pnpm test` | Ejecuta todos los tests con Vitest |
+| `pnpm run test:watch` | Tests en modo watch |
+| `pnpm run test:coverage` | Tests con cobertura |
+| `pnpm run build` | Compila TypeScript |
+| `pnpm run start` | Ejecuta el build compilado (`dist/server.js`) |
+| `pnpm run prisma:generate` | Genera Prisma Client |
+| `pnpm run prisma:migrate` | Corre migraciones en modo dev |
+
+## Módulos
+
+### auth
+Registro y login con JWT. Passwords hasheados con bcrypt.
+
+### manga
+CRUD de mangas y volúmenes. Subida de páginas (imágenes) con multipart. Streaming de imágenes con cache headers. Cada volumen tiene estado `UPLOADING` / `READY`.
+
+### reading
+- **Progreso de manga** — una entrada por (usuario, manga). Nunca retrocede dentro del mismo volumen. Si el volumen actual está completado, `getProgress` retorna `null` para ocultar el botón "Continuar".
+- **Sesiones de lectura** — start/end con duración calculada en segundos.
+- **Reading stats** — totales acumulativos de sesiones, minutos, segundos, páginas leídas y volúmenes completados.
+- **VolumeCompletion** — registro por (usuario, volumen). Se marca automáticamente al llegar a la última página o manualmente. Se puede resetear (marca `isActive = false`, acumula páginas históricas y reinicia la posición a página 1). Los stats nunca retroceden al resetear.
+
+### book
+CRUD de libros EPUB. Subida de archivos EPUB.
+
+### collections
+Colecciones de contenido por usuario.
+
+## Almacenamiento
+
+Sistema de archivos local. Estructura:
+
+```
+storage/manga/{mangaId}/volumes/{volumeId}/pages/{filename}
+```
+
+Las rutas del filesystem nunca se exponen en las respuestas de la API.
 
 ## Testing
 
-Stack de tests:
-
 - Vitest
 - Fastify `inject` para tests de API
-- PostgreSQL real para tests de integracion
+- PostgreSQL real para tests de integración (base de datos separada `lura_test`)
 
-Cobertura implementada:
+Cobertura:
 
-- Services -> Unit tests
-- Repositories -> Integration tests
-- Routes -> API tests
+- Services → Unit tests
+- Repositories → Integration tests
+- Routes → API tests
 
 Comportamiento de DB de test:
 
