@@ -1,8 +1,14 @@
 import { ReadingSessionRepository } from "./reading-session.repository.js";
+import { MangaProgressRepository } from "./manga-progress.repository.js";
+import { VolumeCompletionRepository } from "./volume-completion.repository.js";
 import { AppError } from "../../shared/errors/AppError.js";
 
 export class ReadingSessionService {
-    constructor(private repo: ReadingSessionRepository) { }
+    constructor(
+        private repo: ReadingSessionRepository,
+        private progressRepo: MangaProgressRepository = new MangaProgressRepository(),
+        private completionRepo: VolumeCompletionRepository = new VolumeCompletionRepository()
+    ) { }
 
     async startSession(
         userId: string,
@@ -72,19 +78,26 @@ export class ReadingSessionService {
     }
 
     async getUserReadingStats(userId: string) {
-        // Run all three aggregations in parallel since they are independent.
-        const [total, manga, book] = await Promise.all([
+        // Run all aggregations in parallel since they are independent.
+        const [total, manga, book, totalSessions, pagesSum, totalVolumesRead] = await Promise.all([
             this.repo.getTotalReadingTimeByUser(userId),
             this.repo.getTotalReadingTimeByUserAndType(userId, "MANGA"),
             this.repo.getTotalReadingTimeByUserAndType(userId, "BOOK"),
+            this.repo.countCompletedByUser(userId),
+            this.progressRepo.sumPagesReadByUser(userId),
+            this.completionRepo.countByUser(userId),
         ]);
 
-        // _sum.durationSeconds is null when there are no completed sessions yet;
-        // default to 0 so the client always receives a number.
+        const totalSeconds = total._sum.durationSeconds ?? 0;
+
         return {
-            totalSeconds: total._sum.durationSeconds ?? 0,
+            totalSessions,
+            totalMinutes: Math.floor(totalSeconds / 60),
+            totalSeconds,
             mangaSeconds: manga._sum.durationSeconds ?? 0,
             bookSeconds: book._sum.durationSeconds ?? 0,
+            totalPagesRead: pagesSum._sum.page ?? 0,
+            totalVolumesRead,
         };
     }
 }

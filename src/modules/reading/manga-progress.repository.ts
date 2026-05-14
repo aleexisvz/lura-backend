@@ -42,11 +42,23 @@ export class MangaProgressRepository {
         })
     }
 
-    getContinueReading(userId: string, limit = 10) {
+    getContinueReading(userId: string, limit = 10, excludeVolumeIds: string[] = []) {
         return prisma.mangaProgress.findMany({
-            where: { userId },
+            where: {
+                userId,
+                ...(excludeVolumeIds.length > 0
+                    ? { volumeId: { notIn: excludeVolumeIds } }
+                    : {}),
+            },
             orderBy: { updatedAt: "desc" },
             take: limit,
+        })
+    }
+
+    sumPagesReadByUser(userId: string) {
+        return prisma.mangaProgress.aggregate({
+            where: { userId },
+            _sum: { page: true },
         })
     }
 }

@@ -18,12 +18,12 @@ model User {
   password  String
   role      Role     @default(USER)
 
-  readingSessions ReadingSession[]
+  readingSessions   ReadingSession[]
+  mangaProgress     MangaProgress[]
+  volumeCompletions VolumeCompletion[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  mangaProgress MangaProgress[]
 }
 
 enum Role {
@@ -62,7 +62,8 @@ model Volume {
   status     VolumeStatus
   pagesCount Int      @default(0)
 
-  pages      Page[]
+  pages             Page[]
+  volumeCompletions VolumeCompletion[]
 
   createdAt  DateTime @default(now())
 
@@ -125,4 +126,18 @@ model ReadingSession {
 enum ReadingContentType {
   MANGA
   BOOK
+}
+
+model VolumeCompletion {
+  id          String   @id @default(cuid())
+  userId      String
+  volumeId    String
+  mangaId     String
+  completedAt DateTime @default(now())
+
+  User   User   @relation(fields: [userId], references: [id])
+  Volume Volume @relation(fields: [volumeId], references: [id])
+
+  @@unique([userId, volumeId])
+  @@index([userId])
 }

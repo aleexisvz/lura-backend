@@ -67,4 +67,10 @@ export class ReadingSessionRepository {
             },
         });
     }
+
+    countCompletedByUser(userId: string) {
+        return prisma.readingSession.count({
+            where: { userId, endedAt: { not: null } },
+        });
+    }
 }

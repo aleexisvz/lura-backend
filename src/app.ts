@@ -8,6 +8,7 @@ import { mangaRoutes } from "./modules/manga/manga.routes.js";
 import { AppError } from "./shared/errors/AppError.js";
 import { mangaProgressRoutes } from "./modules/reading/manga-progress.routes.js";
 import { readingSessionRoutes } from "./modules/reading/reading-session.routes.js";
+import { volumeCompletionRoutes } from "./modules/reading/volume-completion.routes.js";
 
 function defaultErrorCodeByStatus(statusCode: number) {
   if (statusCode >= 500) return "INTERNAL_ERROR";
@@ -54,6 +55,7 @@ export async function buildApp() {
   
   await app.register(mangaProgressRoutes)
   await app.register(readingSessionRoutes)
+  await app.register(volumeCompletionRoutes)
 
   app.addHook("preSerialization", async (_request, reply, payload) => {
     if (reply.statusCode < 400) {

@@ -1,9 +1,13 @@
 import { MangaProgressRepository } from "./manga-progress.repository.js"
+import { VolumeCompletionRepository } from "./volume-completion.repository.js"
 import { notFound, unprocessableEntity } from "../../shared/errors/error-factory.js"
 
 export class MangaProgressService {
 
-    constructor(private repo: MangaProgressRepository) { }
+    constructor(
+        private repo: MangaProgressRepository,
+        private completionRepo = new VolumeCompletionRepository()
+    ) { }
 
     async getProgress(userId: string, mangaId: string) {
         const progress = await this.repo.findByUserAndManga(userId, mangaId)
@@ -74,6 +78,7 @@ export class MangaProgressService {
     }
 
     async getContinueReading(userId: string) {
-        return this.repo.getContinueReading(userId)
+        const completedVolumeIds = await this.completionRepo.findVolumeIdsByUser(userId)
+        return this.repo.getContinueReading(userId, 10, completedVolumeIds)
     }
 }
