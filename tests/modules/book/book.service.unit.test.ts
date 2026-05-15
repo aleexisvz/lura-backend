@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Readable } from "node:stream";
+import path from "node:path";
 import { BookService } from "../../../src/modules/book/book.service.js";
 
 describe("BookService (unit)", () => {
@@ -165,7 +166,9 @@ describe("BookService (unit)", () => {
       id: "b-1",
       title: "Dune",
     });
-    storage.resolveBookEpubPath.mockReturnValue("C:\\repo\\storage\\books\\b-1\\book.epub");
+    const absolutePath = path.join("C:", "repo", "storage", "books", "b-1", "book.epub");
+    const expectedDir = path.dirname(absolutePath);
+    storage.resolveBookEpubPath.mockReturnValue(absolutePath);
 
     const fileStream = Readable.from(["epub-bytes"]);
     const req = {
@@ -178,8 +181,8 @@ describe("BookService (unit)", () => {
 
     const result = await service.uploadEpub(req as any, "b-1");
 
-    expect(storage.ensureDir).toHaveBeenCalledWith("C:\\repo\\storage\\books\\b-1");
-    expect(storage.saveStream).toHaveBeenCalledWith(fileStream, "C:\\repo\\storage\\books\\b-1\\book.epub");
+    expect(storage.ensureDir).toHaveBeenCalledWith(expectedDir);
+    expect(storage.saveStream).toHaveBeenCalledWith(fileStream, absolutePath);
     expect(repo.updateBookEpubPath).toHaveBeenCalledWith("b-1", "books/b-1/book.epub");
     expect(result).toEqual({ uploaded: true });
   });
