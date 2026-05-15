@@ -49,31 +49,59 @@ describe("Manga routes (api)", () => {
     ]);
   });
 
-  it("GET /manga?categories should filter by OR logic", async () => {
+  it("GET /manga?tagIds should filter by OR logic", async () => {
+    const actionTag = await prisma.tag.create({
+      data: {
+        scope: "MANGA",
+        name: "action",
+        slug: "action",
+      },
+    });
+    const dramaTag = await prisma.tag.create({
+      data: {
+        scope: "MANGA",
+        name: "drama",
+        slug: "drama",
+      },
+    });
+    const sportsTag = await prisma.tag.create({
+      data: {
+        scope: "MANGA",
+        name: "sports",
+        slug: "sports",
+      },
+    });
+
     await prisma.manga.create({
       data: {
         title: "Action manga",
-        categories: ["action"],
+        mangaTags: {
+          create: [{ tagId: actionTag.id }],
+        },
       },
     });
 
     await prisma.manga.create({
       data: {
         title: "Drama manga",
-        categories: ["drama"],
+        mangaTags: {
+          create: [{ tagId: dramaTag.id }],
+        },
       },
     });
 
     await prisma.manga.create({
       data: {
         title: "No match",
-        categories: ["sports"],
+        mangaTags: {
+          create: [{ tagId: sportsTag.id }],
+        },
       },
     });
 
     const response = await app.inject({
       method: "GET",
-      url: "/manga?categories=action,drama",
+      url: `/manga?tagIds=${actionTag.id},${dramaTag.id}`,
       headers: buildAuthHeader(app, "USER"),
     });
 
@@ -143,10 +171,34 @@ describe("Manga routes (api)", () => {
   });
 
   it("PATCH /manga/:mangaId should update metadata", async () => {
+    const oldTag = await prisma.tag.create({
+      data: {
+        scope: "MANGA",
+        name: "old",
+        slug: "old",
+      },
+    });
+    const actionTag = await prisma.tag.create({
+      data: {
+        scope: "MANGA",
+        name: "Action",
+        slug: "action",
+      },
+    });
+    const dramaTag = await prisma.tag.create({
+      data: {
+        scope: "MANGA",
+        name: "drama",
+        slug: "drama",
+      },
+    });
+
     const manga = await prisma.manga.create({
       data: {
         title: "Old title",
-        categories: ["old"],
+        mangaTags: {
+          create: [{ tagId: oldTag.id }],
+        },
       },
     });
 
@@ -156,7 +208,7 @@ describe("Manga routes (api)", () => {
       headers: buildAuthHeader(app, "ADMIN"),
       payload: {
         title: "New title",
-        categories: [" Action ", "action", "drama"],
+        tagIds: [actionTag.id, actionTag.id, dramaTag.id],
       },
     });
 
@@ -164,7 +216,7 @@ describe("Manga routes (api)", () => {
     expect(response.json()).toEqual(
       expect.objectContaining({
         title: "New title",
-        categories: ["action", "drama"],
+        categories: ["Action", "drama"],
       })
     );
   });

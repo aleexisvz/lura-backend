@@ -1,13 +1,13 @@
 export type CreateMangaDTO = {
   title: string
   author?: string
-  categories?: string[]
+  tagIds?: string[]
 }
 
 export type UpdateMangaDTO = {
   title?: string
   author?: string
-  categories?: string[]
+  tagIds?: string[]
 }
 
 export type CreateVolumeDTO = {

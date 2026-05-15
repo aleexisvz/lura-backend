@@ -3,8 +3,7 @@ import { z } from "zod";
 import { MangaService } from "./manga.service.js";
 import { notFound } from "../../shared/errors/error-factory.js";
 
-const categorySchema = z.string().trim().min(1).max(50);
-const categoriesSchema = z.array(categorySchema).max(20);
+const tagIdsSchema = z.array(z.string().trim().min(1)).max(100);
 
 const MangaIdParamsSchema = z.object({
   mangaId: z.string().trim().min(1),
@@ -22,20 +21,20 @@ const PageImageParamsSchema = z.object({
 });
 
 const MangaListQuerySchema = z.object({
-  categories: z.string().optional(),
+  tagIds: z.string().optional(),
 });
 
 const CreateMangaSchema = z.object({
   title: z.string().trim().min(1),
   author: z.string().trim().min(1).optional(),
-  categories: categoriesSchema.optional(),
+  tagIds: tagIdsSchema.optional(),
 });
 
 const UpdateMangaSchema = z
   .object({
     title: z.string().trim().min(1).optional(),
     author: z.string().trim().min(1).optional(),
-    categories: categoriesSchema.optional(),
+    tagIds: tagIdsSchema.optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "At least one field must be provided",
@@ -59,15 +58,15 @@ export class MangaController {
   constructor(private service: MangaService) {}
 
   getAllMangas = async (req: FastifyRequest, reply: FastifyReply) => {
-    const { categories } = MangaListQuerySchema.parse(req.query);
-    const categoryList = categories
-      ? categories
+    const { tagIds } = MangaListQuerySchema.parse(req.query);
+    const parsedTagIds = tagIds
+      ? tagIds
           .split(",")
-          .map((item) => item.trim().toLowerCase())
+          .map((item) => item.trim())
           .filter(Boolean)
       : [];
 
-    const mangas = await this.service.getAllMangas(categoryList);
+    const mangas = await this.service.getAllMangas(parsedTagIds);
     return reply.send(mangas);
   };
 
@@ -89,9 +88,9 @@ export class MangaController {
   };
 
   createManga = async (req: FastifyRequest, reply: FastifyReply) => {
-    const { title, author, categories } = CreateMangaSchema.parse(req.body);
+    const { title, author, tagIds } = CreateMangaSchema.parse(req.body);
 
-    const manga = await this.service.createManga(title, author, categories ?? []);
+    const manga = await this.service.createManga(title, author, tagIds ?? []);
 
     return reply.send(manga);
   };
@@ -99,8 +98,13 @@ export class MangaController {
   updateManga = async (req: FastifyRequest, reply: FastifyReply) => {
     const { mangaId } = MangaIdParamsSchema.parse(req.params);
     const body = UpdateMangaSchema.parse(req.body);
+    const payload = {
+      ...(body.title !== undefined ? { title: body.title } : {}),
+      ...(body.author !== undefined ? { author: body.author } : {}),
+      ...(body.tagIds !== undefined ? { tagIds: body.tagIds } : {}),
+    };
 
-    const manga = await this.service.updateManga(mangaId, body);
+    const manga = await this.service.updateManga(mangaId, payload);
     return reply.send(manga);
   };
 
@@ -116,8 +120,12 @@ export class MangaController {
   updateVolume = async (req: FastifyRequest, reply: FastifyReply) => {
     const { mangaId, volumeId } = MangaVolumeParamsSchema.parse(req.params);
     const body = UpdateVolumeSchema.parse(req.body);
+    const payload = {
+      ...(body.title !== undefined ? { title: body.title } : {}),
+      ...(body.number !== undefined ? { number: body.number } : {}),
+    };
 
-    const volume = await this.service.updateVolume(mangaId, volumeId, body);
+    const volume = await this.service.updateVolume(mangaId, volumeId, payload);
     return reply.send(volume);
   };
 

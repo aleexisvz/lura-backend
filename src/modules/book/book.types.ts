@@ -2,14 +2,14 @@ export type CreateBookDTO = {
   title: string;
   author?: string;
   description?: string;
-  categories?: string[];
+  tagIds?: string[];
 };
 
 export type UpdateBookDTO = {
   title?: string;
   author?: string;
   description?: string;
-  categories?: string[];
+  tagIds?: string[];
 };
 
 export type PublicBookDTO = {
@@ -17,6 +17,7 @@ export type PublicBookDTO = {
   title: string;
   author: string | null;
   description: string | null;
+  tags: { id: string; name: string; slug: string }[];
   categories: string[];
   coverUrl: string | null;
   createdAt: Date;

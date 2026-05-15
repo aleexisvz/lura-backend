@@ -2,22 +2,21 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { BookService } from "./book.service.js";
 
-const categorySchema = z.string().trim().min(1).max(50);
-const categoriesSchema = z.array(categorySchema).max(20);
+const tagIdsSchema = z.array(z.string().trim().min(1)).max(100);
 
 const BookIdParamsSchema = z.object({
   bookId: z.string().trim().min(1),
 });
 
 const ListBooksQuerySchema = z.object({
-  categories: z.string().optional(),
+  tagIds: z.string().optional(),
 });
 
 const CreateBookSchema = z.object({
   title: z.string().trim().min(1),
   author: z.string().trim().min(1).optional(),
   description: z.string().trim().min(1).optional(),
-  categories: categoriesSchema.optional(),
+  tagIds: tagIdsSchema.optional(),
 });
 
 const UpdateBookSchema = z
@@ -25,7 +24,7 @@ const UpdateBookSchema = z
     title: z.string().trim().min(1).optional(),
     author: z.string().trim().min(1).optional(),
     description: z.string().trim().min(1).optional(),
-    categories: categoriesSchema.optional(),
+    tagIds: tagIdsSchema.optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "At least one field must be provided",
@@ -35,15 +34,15 @@ export class BookController {
   constructor(private service: BookService) {}
 
   getAllBooks = async (req: FastifyRequest, reply: FastifyReply) => {
-    const { categories } = ListBooksQuerySchema.parse(req.query);
-    const categoryList = categories
-      ? categories
+    const { tagIds } = ListBooksQuerySchema.parse(req.query);
+    const parsedTagIds = tagIds
+      ? tagIds
           .split(",")
-          .map((item) => item.trim().toLowerCase())
+          .map((item) => item.trim())
           .filter(Boolean)
       : [];
 
-    const books = await this.service.getAllBooks(categoryList);
+    const books = await this.service.getAllBooks(parsedTagIds);
     return reply.send(books);
   };
 
@@ -59,7 +58,7 @@ export class BookController {
       title: body.title,
       ...(body.author !== undefined ? { author: body.author } : {}),
       ...(body.description !== undefined ? { description: body.description } : {}),
-      categories: body.categories ?? [],
+      tagIds: body.tagIds ?? [],
     });
     return reply.send(book);
   };
@@ -67,7 +66,13 @@ export class BookController {
   updateBook = async (req: FastifyRequest, reply: FastifyReply) => {
     const { bookId } = BookIdParamsSchema.parse(req.params);
     const body = UpdateBookSchema.parse(req.body);
-    const book = await this.service.updateBook(bookId, body);
+    const payload = {
+      ...(body.title !== undefined ? { title: body.title } : {}),
+      ...(body.author !== undefined ? { author: body.author } : {}),
+      ...(body.description !== undefined ? { description: body.description } : {}),
+      ...(body.tagIds !== undefined ? { tagIds: body.tagIds } : {}),
+    };
+    const book = await this.service.updateBook(bookId, payload);
     return reply.send(book);
   };
 

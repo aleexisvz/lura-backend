@@ -1,3 +1,4 @@
+import type { TagScope } from "@prisma/client";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import path from "node:path";
 import fs from "node:fs";
@@ -7,15 +8,22 @@ import { LocalStorageService } from "../../infrastructure/storage/LocalStorageSe
 import { naturalSortByFilename } from "../../shared/utils/natural-sort.js";
 import { notFound, conflict, badRequest } from "../../shared/errors/error-factory.js";
 import { getImageContentType } from "../../shared/utils/get-image-content-type.js";
-import { normalizeCategories } from "../../shared/utils/normalize-categories.js";
+import { TagsRepository } from "../tags/tags.repository.js";
 
 type RawManga = {
   id: string;
   title: string;
   author: string | null;
-  categories: string[];
   coverPath: string | null;
   createdAt: Date;
+  mangaTags?: Array<{
+    Tag: {
+      id: string;
+      scope: TagScope;
+      name: string;
+      slug: string;
+    };
+  }>;
 };
 
 type RawVolume = {
@@ -32,11 +40,12 @@ type RawVolume = {
 export class MangaService {
   constructor(
     private repo: MangaRepository,
-    private storage: LocalStorageService
+    private storage: LocalStorageService,
+    private tagsRepo: TagsRepository
   ) {}
 
-  async getAllMangas(categories: string[] = []) {
-    const mangas = await this.repo.findAllMangas(categories);
+  async getAllMangas(tagIds: string[] = []) {
+    const mangas = await this.repo.findAllMangas(tagIds);
     return mangas.map((manga) => this.toPublicManga(manga));
   }
 
@@ -50,12 +59,12 @@ export class MangaService {
     return volumes.map((volume) => this.toPublicVolume(volume));
   }
 
-  async createManga(title: string, author?: string, categories: string[] = []) {
-    const normalizedCategories = normalizeCategories(categories);
+  async createManga(title: string, author?: string, tagIds: string[] = []) {
+    const validTagIds = await this.assertTagIdsForScope(tagIds, "MANGA");
     const created = await this.repo.createManga({
       title,
       ...(author && { author }),
-      categories: normalizedCategories,
+      tagIds: validTagIds,
     });
 
     return this.toPublicManga(created);
@@ -63,19 +72,20 @@ export class MangaService {
 
   async updateManga(
     mangaId: string,
-    data: { title?: string; author?: string; categories?: string[] }
+    data: { title?: string; author?: string; tagIds?: string[] }
   ) {
     const existing = await this.repo.findMangaById(mangaId);
     if (!existing) {
       throw notFound("MANGA_NOT_FOUND", "Manga not found");
     }
 
+    const validTagIds =
+      data.tagIds !== undefined ? await this.assertTagIdsForScope(data.tagIds, "MANGA") : undefined;
+
     const updated = await this.repo.updateManga(mangaId, {
       ...(data.title !== undefined ? { title: data.title } : {}),
       ...(data.author !== undefined ? { author: data.author } : {}),
-      ...(data.categories !== undefined
-        ? { categories: normalizeCategories(data.categories) }
-        : {}),
+      ...(validTagIds !== undefined ? { tagIds: validTagIds } : {}),
     });
 
     return this.toPublicManga(updated);
@@ -336,6 +346,26 @@ export class MangaService {
     return reply.send(this.storage.createReadStream(filepath));
   }
 
+  private async assertTagIdsForScope(tagIds: string[], scope: TagScope) {
+    if (tagIds.length === 0) {
+      return [];
+    }
+
+    const uniqueIds = Array.from(new Set(tagIds));
+    const tags = await this.tagsRepo.findByIds(uniqueIds);
+
+    if (tags.length !== uniqueIds.length) {
+      throw badRequest("TAG_NOT_FOUND", "One or more tags do not exist");
+    }
+
+    const invalidTag = tags.find((tag) => tag.scope !== scope);
+    if (invalidTag) {
+      throw badRequest("TAG_SCOPE_MISMATCH", "One or more tags have invalid scope");
+    }
+
+    return uniqueIds;
+  }
+
   private async getRequiredFile(req: FastifyRequest) {
     let file: Awaited<ReturnType<FastifyRequest["file"]>>;
     try {
@@ -369,11 +399,18 @@ export class MangaService {
   }
 
   private toPublicManga(manga: RawManga) {
+    const tags = (manga.mangaTags ?? []).map((mangaTag) => ({
+      id: mangaTag.Tag.id,
+      name: mangaTag.Tag.name,
+      slug: mangaTag.Tag.slug,
+    }));
+
     return {
       id: manga.id,
       title: manga.title,
       author: manga.author,
-      categories: manga.categories ?? [],
+      tags,
+      categories: tags.map((tag) => tag.name),
       coverUrl: this.toCoverUrl(manga.coverPath, `/manga/${manga.id}/cover`),
       createdAt: manga.createdAt,
     };

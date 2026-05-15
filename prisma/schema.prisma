@@ -35,10 +35,10 @@ model Manga {
   id        String   @id @default(cuid())
   title     String
   author    String?
-  categories String[] @default([])
   coverPath String?
 
   volumes   Volume[]
+  mangaTags MangaTag[]
 
   createdAt DateTime @default(now())
 }
@@ -48,12 +48,55 @@ model Book {
   title       String
   author      String?
   description String?
-  categories  String[] @default([])
   coverPath   String?
   epubPath    String?
 
+  bookTags    BookTag[]
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  scope     TagScope
+  name      String
+  slug      String
+
+  mangaTags MangaTag[]
+  bookTags  BookTag[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([scope, slug])
+}
+
+enum TagScope {
+  MANGA
+  BOOK
+}
+
+model MangaTag {
+  mangaId String
+  tagId   String
+
+  Manga Manga @relation(fields: [mangaId], references: [id])
+  Tag   Tag   @relation(fields: [tagId], references: [id])
+
+  @@id([mangaId, tagId])
+  @@index([tagId])
+}
+
+model BookTag {
+  bookId String
+  tagId  String
+
+  Book Book @relation(fields: [bookId], references: [id])
+  Tag  Tag  @relation(fields: [tagId], references: [id])
+
+  @@id([bookId, tagId])
+  @@index([tagId])
 }
 
 model Volume {

@@ -45,10 +45,34 @@ describe("Book routes (api)", () => {
   });
 
   it("PATCH /books/:bookId should update metadata", async () => {
+    const oldTag = await prisma.tag.create({
+      data: {
+        scope: "BOOK",
+        name: "old",
+        slug: "old",
+      },
+    });
+    const sciFiTag = await prisma.tag.create({
+      data: {
+        scope: "BOOK",
+        name: "Sci-Fi",
+        slug: "sci-fi",
+      },
+    });
+    const classicTag = await prisma.tag.create({
+      data: {
+        scope: "BOOK",
+        name: "classic",
+        slug: "classic",
+      },
+    });
+
     const book = await prisma.book.create({
       data: {
         title: "Old title",
-        categories: ["old"],
+        bookTags: {
+          create: [{ tagId: oldTag.id }],
+        },
       },
     });
 
@@ -58,7 +82,7 @@ describe("Book routes (api)", () => {
       headers: buildAuthHeader(app, "ADMIN"),
       payload: {
         title: "New title",
-        categories: [" Sci-Fi ", "sci-fi", "classic"],
+        tagIds: [sciFiTag.id, sciFiTag.id, classicTag.id],
       },
     });
 
@@ -66,7 +90,7 @@ describe("Book routes (api)", () => {
     expect(response.json()).toEqual(
       expect.objectContaining({
         title: "New title",
-        categories: ["sci-fi", "classic"],
+        categories: ["Sci-Fi", "classic"],
       })
     );
   });
@@ -205,31 +229,59 @@ describe("Book routes (api)", () => {
     ]);
   });
 
-  it("GET /books?categories should filter by OR logic", async () => {
+  it("GET /books?tagIds should filter by OR logic", async () => {
+    const fantasyTag = await prisma.tag.create({
+      data: {
+        scope: "BOOK",
+        name: "fantasy",
+        slug: "fantasy",
+      },
+    });
+    const historyTag = await prisma.tag.create({
+      data: {
+        scope: "BOOK",
+        name: "history",
+        slug: "history",
+      },
+    });
+    const scienceTag = await prisma.tag.create({
+      data: {
+        scope: "BOOK",
+        name: "science",
+        slug: "science",
+      },
+    });
+
     await prisma.book.create({
       data: {
         title: "Fantasy book",
-        categories: ["fantasy"],
+        bookTags: {
+          create: [{ tagId: fantasyTag.id }],
+        },
       },
     });
 
     await prisma.book.create({
       data: {
         title: "History book",
-        categories: ["history"],
+        bookTags: {
+          create: [{ tagId: historyTag.id }],
+        },
       },
     });
 
     await prisma.book.create({
       data: {
         title: "No match",
-        categories: ["science"],
+        bookTags: {
+          create: [{ tagId: scienceTag.id }],
+        },
       },
     });
 
     const response = await app.inject({
       method: "GET",
-      url: "/books?categories=fantasy,history",
+      url: `/books?tagIds=${fantasyTag.id},${historyTag.id}`,
       headers: buildAuthHeader(app, "USER"),
     });
 

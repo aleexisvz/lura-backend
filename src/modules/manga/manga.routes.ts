@@ -5,12 +5,14 @@ import { MangaController } from "./manga.controller.js"
 import { LocalStorageService } from "../../infrastructure/storage/LocalStorageService.js"
 import { requireAuth } from "../../shared/http/auth.js"
 import { requireAdmin } from "../../shared/http/requiereAdmin.js"
+import { TagsRepository } from "../tags/tags.repository.js"
 
 export async function mangaRoutes(app: FastifyInstance) {
 
   const repo = new MangaRepository()
   const storage = new LocalStorageService()
-  const service = new MangaService(repo, storage)
+  const tagsRepo = new TagsRepository()
+  const service = new MangaService(repo, storage, tagsRepo)
   const controller = new MangaController(service)
 
   app.post("/", { preHandler: requireAdmin }, controller.createManga);

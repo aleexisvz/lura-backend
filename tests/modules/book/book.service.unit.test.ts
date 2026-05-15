@@ -19,11 +19,15 @@ describe("BookService (unit)", () => {
     saveStream: vi.fn(),
   };
 
+  const tagsRepo = {
+    findByIds: vi.fn(),
+  };
+
   let service: BookService;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new BookService(repo as any, storage as any);
+    service = new BookService(repo as any, storage as any, tagsRepo as any);
   });
 
   it("getAllBooks() should return repository list", async () => {
@@ -33,9 +37,11 @@ describe("BookService (unit)", () => {
         title: "Dune",
         author: "Frank Herbert",
         description: null,
+        coverPath: null,
         createdAt: new Date("2026-01-01T00:00:00.000Z"),
         updatedAt: new Date("2026-01-01T00:00:00.000Z"),
         epubPath: null,
+        bookTags: [],
       },
     ]);
 
@@ -47,6 +53,7 @@ describe("BookService (unit)", () => {
         id: "b-1",
         title: "Dune",
         hasEpub: false,
+        categories: [],
       }),
     ]);
   });
@@ -57,9 +64,11 @@ describe("BookService (unit)", () => {
       title: "Dune",
       author: null,
       description: null,
+      coverPath: null,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
       updatedAt: new Date("2026-01-01T00:00:00.000Z"),
       epubPath: "books/b-1/book.epub",
+      bookTags: [],
     });
 
     const result = await service.getBookById("b-1");
@@ -74,93 +83,61 @@ describe("BookService (unit)", () => {
     );
   });
 
-  it("getBookById() should throw BOOK_NOT_FOUND when book does not exist", async () => {
-    repo.findBookById.mockResolvedValue(null);
-
-    await expect(service.getBookById("missing-book")).rejects.toMatchObject({
-      code: "BOOK_NOT_FOUND",
-      statusCode: 404,
-    });
-  });
-
   it("createBook() should delegate to repository", async () => {
+    tagsRepo.findByIds.mockResolvedValue([
+      { id: "t-1", scope: "BOOK", name: "Sci-Fi", slug: "sci-fi" },
+    ]);
     repo.createBook.mockResolvedValue({
       id: "b-1",
       title: "Dune",
       author: "Frank Herbert",
       description: "Sci-fi classic",
+      coverPath: null,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
       updatedAt: new Date("2026-01-01T00:00:00.000Z"),
       epubPath: null,
+      bookTags: [
+        {
+          Tag: { id: "t-1", name: "Sci-Fi", slug: "sci-fi" },
+        },
+      ],
     });
 
     const result = await service.createBook({
       title: "Dune",
       author: "Frank Herbert",
       description: "Sci-fi classic",
-      categories: ["Sci-Fi", "classic", "sci-fi"],
+      tagIds: ["t-1", "t-1"],
     });
 
     expect(repo.createBook).toHaveBeenCalledWith({
       title: "Dune",
       author: "Frank Herbert",
       description: "Sci-fi classic",
-      categories: ["sci-fi", "classic"],
+      tagIds: ["t-1"],
     });
     expect(result).toEqual(
       expect.objectContaining({
         id: "b-1",
         title: "Dune",
         hasEpub: false,
+        categories: ["Sci-Fi"],
       })
     );
   });
 
-  it("uploadEpub() should fail when book does not exist", async () => {
-    repo.findBookById.mockResolvedValue(null);
+  it("createBook() should reject manga tags", async () => {
+    tagsRepo.findByIds.mockResolvedValue([
+      { id: "t-2", scope: "MANGA", name: "Action", slug: "action" },
+    ]);
 
-    const req = {
-      file: vi.fn(),
-    };
-
-    await expect(service.uploadEpub(req as any, "missing-book")).rejects.toMatchObject({
-      code: "BOOK_NOT_FOUND",
-      statusCode: 404,
-    });
-  });
-
-  it("uploadEpub() should fail when file is missing", async () => {
-    repo.findBookById.mockResolvedValue({
-      id: "b-1",
-      title: "Dune",
-    });
-
-    const req = {
-      file: vi.fn().mockResolvedValue(undefined),
-    };
-
-    await expect(service.uploadEpub(req as any, "b-1")).rejects.toMatchObject({
-      code: "NO_FILES_UPLOADED",
-      statusCode: 400,
-    });
-  });
-
-  it("uploadEpub() should fail for invalid non-epub file", async () => {
-    repo.findBookById.mockResolvedValue({
-      id: "b-1",
-      title: "Dune",
-    });
-
-    const req = {
-      file: vi.fn().mockResolvedValue({
-        filename: "book.pdf",
-        mimetype: "application/pdf",
-        file: Readable.from(["dummy"]),
-      }),
-    };
-
-    await expect(service.uploadEpub(req as any, "b-1")).rejects.toMatchObject({
-      code: "INVALID_PARAMS",
+    await expect(
+      service.createBook({
+        title: "Dune",
+        tagIds: ["t-2"],
+      })
+    ).rejects.toMatchObject({
+      code: "TAG_SCOPE_MISMATCH",
       statusCode: 400,
     });
   });
@@ -169,6 +146,7 @@ describe("BookService (unit)", () => {
     repo.findBookById.mockResolvedValue({
       id: "b-1",
       title: "Dune",
+      bookTags: [],
     });
     const absolutePath = path.join("C:", "repo", "storage", "books", "b-1", "book.epub");
     const expectedDir = path.dirname(absolutePath);

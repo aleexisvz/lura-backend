@@ -5,11 +5,13 @@ import { LocalStorageService } from "../../infrastructure/storage/LocalStorageSe
 import { BookController } from "./book.controller.js";
 import { BookRepository } from "./book.repository.js";
 import { BookService } from "./book.service.js";
+import { TagsRepository } from "../tags/tags.repository.js";
 
 export async function bookRoutes(app: FastifyInstance) {
   const repo = new BookRepository();
   const storage = new LocalStorageService();
-  const service = new BookService(repo, storage);
+  const tagsRepo = new TagsRepository();
+  const service = new BookService(repo, storage, tagsRepo);
   const controller = new BookController(service);
 
   app.post("/", { preHandler: requireAdmin }, controller.createBook);

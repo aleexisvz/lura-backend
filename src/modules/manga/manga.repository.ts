@@ -1,27 +1,74 @@
-import { prisma } from "../../infrastructure/database/prisma.js"
-import type { UpdateMangaDTO, UpdateVolumeDTO } from "./manga.types.js"
+import { prisma } from "../../infrastructure/database/prisma.js";
+import type { UpdateMangaDTO, UpdateVolumeDTO } from "./manga.types.js";
+
+const mangaWithTagsInclude = {
+  mangaTags: {
+    include: {
+      Tag: true,
+    },
+  },
+} as const;
 
 export class MangaRepository {
-
-  findAllMangas(categories: string[] = []) {
+  findAllMangas(tagIds: string[] = []) {
     return prisma.manga.findMany({
-      where: categories.length > 0 ? { categories: { hasSome: categories } } : undefined,
+      ...(tagIds.length > 0
+        ? {
+            where: {
+              mangaTags: {
+                some: {
+                  tagId: { in: tagIds },
+                },
+              },
+            },
+          }
+        : {}),
+      include: mangaWithTagsInclude,
       orderBy: {
         createdAt: "desc",
       },
-    })
+    });
   }
 
-  createManga(data: { title: string; author?: string; categories?: string[] }) {
+  createManga(data: { title: string; author?: string; tagIds?: string[] }) {
     return prisma.manga.create({
-      data,
-    })
+      data: {
+        title: data.title,
+        ...(data.author !== undefined ? { author: data.author } : {}),
+        ...(data.tagIds !== undefined
+          ? {
+              mangaTags: {
+                createMany: {
+                  data: data.tagIds.map((tagId) => ({ tagId })),
+                  skipDuplicates: true,
+                },
+              },
+            }
+          : {}),
+      },
+      include: mangaWithTagsInclude,
+    });
   }
 
   updateManga(mangaId: string, data: UpdateMangaDTO) {
     return prisma.manga.update({
       where: { id: mangaId },
-      data,
+      data: {
+        ...(data.title !== undefined ? { title: data.title } : {}),
+        ...(data.author !== undefined ? { author: data.author } : {}),
+        ...(data.tagIds !== undefined
+          ? {
+              mangaTags: {
+                deleteMany: {},
+                createMany: {
+                  data: data.tagIds.map((tagId) => ({ tagId })),
+                  skipDuplicates: true,
+                },
+              },
+            }
+          : {}),
+      },
+      include: mangaWithTagsInclude,
     });
   }
 
@@ -35,26 +82,23 @@ export class MangaRepository {
   findMangaById(id: string) {
     return prisma.manga.findUnique({
       where: { id },
-    })
+      include: mangaWithTagsInclude,
+    });
   }
 
-  createVolume(data: {
-    mangaId: string
-    number: number
-    title?: string
-  }) {
+  createVolume(data: { mangaId: string; number: number; title?: string }) {
     return prisma.volume.create({
       data: {
         ...data,
         status: "UPLOADING",
       },
-    })
+    });
   }
 
   findVolumeById(id: string) {
     return prisma.volume.findUnique({
       where: { id },
-    })
+    });
   }
 
   updateVolume(volumeId: string, data: UpdateVolumeDTO) {
@@ -75,7 +119,7 @@ export class MangaRepository {
     return prisma.volume.findMany({
       where: { mangaId },
       orderBy: { number: "asc" },
-    })
+    });
   }
 
   findVolumeByMangaAndNumber(mangaId: string, number: number) {
@@ -84,7 +128,7 @@ export class MangaRepository {
         mangaId,
         number,
       },
-    })
+    });
   }
 
   updateVolumeStatus(id: string, pagesCount: number) {
@@ -94,7 +138,7 @@ export class MangaRepository {
         status: "READY",
         pagesCount,
       },
-    })
+    });
   }
 
   deletePagesByVolumeId(volumeId: string) {
@@ -108,7 +152,7 @@ export class MangaRepository {
         index: p.index,
         filename: p.filename,
       })),
-    })
+    });
   }
 
   findPagesByVolume(volumeId: string) {

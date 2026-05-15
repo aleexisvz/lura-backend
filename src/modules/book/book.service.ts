@@ -1,20 +1,22 @@
+import type { TagScope } from "@prisma/client";
 import path from "node:path";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { notFound, badRequest } from "../../shared/errors/error-factory.js";
 import { LocalStorageService } from "../../infrastructure/storage/LocalStorageService.js";
 import { BookRepository } from "./book.repository.js";
 import type { CreateBookDTO, PublicBookDTO, UpdateBookDTO } from "./book.types.js";
-import { normalizeCategories } from "../../shared/utils/normalize-categories.js";
 import { getImageContentType } from "../../shared/utils/get-image-content-type.js";
+import { TagsRepository } from "../tags/tags.repository.js";
 
 export class BookService {
   constructor(
     private repo: BookRepository,
-    private storage: LocalStorageService
+    private storage: LocalStorageService,
+    private tagsRepo: TagsRepository
   ) {}
 
-  async getAllBooks(categories: string[] = []) {
-    const books = await this.repo.findAllBooks(categories);
+  async getAllBooks(tagIds: string[] = []) {
+    const books = await this.repo.findAllBooks(tagIds);
     return books.map((book) => this.toPublicBook(book));
   }
 
@@ -29,9 +31,10 @@ export class BookService {
   }
 
   async createBook(data: CreateBookDTO) {
+    const validTagIds = await this.assertTagIdsForScope(data.tagIds ?? [], "BOOK");
     const created = await this.repo.createBook({
       ...data,
-      categories: normalizeCategories(data.categories ?? []),
+      tagIds: validTagIds,
     });
     return this.toPublicBook(created);
   }
@@ -42,13 +45,14 @@ export class BookService {
       throw notFound("BOOK_NOT_FOUND", "Book not found");
     }
 
+    const validTagIds =
+      data.tagIds !== undefined ? await this.assertTagIdsForScope(data.tagIds, "BOOK") : undefined;
+
     const updated = await this.repo.updateBook(bookId, {
       ...(data.title !== undefined ? { title: data.title } : {}),
       ...(data.author !== undefined ? { author: data.author } : {}),
       ...(data.description !== undefined ? { description: data.description } : {}),
-      ...(data.categories !== undefined
-        ? { categories: normalizeCategories(data.categories) }
-        : {}),
+      ...(validTagIds !== undefined ? { tagIds: validTagIds } : {}),
     });
 
     return this.toPublicBook(updated);
@@ -129,6 +133,26 @@ export class BookService {
     return reply.send(this.storage.createReadStream(filepath));
   }
 
+  private async assertTagIdsForScope(tagIds: string[], scope: TagScope) {
+    if (tagIds.length === 0) {
+      return [];
+    }
+
+    const uniqueIds = Array.from(new Set(tagIds));
+    const tags = await this.tagsRepo.findByIds(uniqueIds);
+
+    if (tags.length !== uniqueIds.length) {
+      throw badRequest("TAG_NOT_FOUND", "One or more tags do not exist");
+    }
+
+    const invalidTag = tags.find((tag) => tag.scope !== scope);
+    if (invalidTag) {
+      throw badRequest("TAG_SCOPE_MISMATCH", "One or more tags have invalid scope");
+    }
+
+    return uniqueIds;
+  }
+
   private async getRequiredFile(req: FastifyRequest) {
     let file: Awaited<ReturnType<FastifyRequest["file"]>>;
     try {
@@ -162,18 +186,31 @@ export class BookService {
     title: string;
     author: string | null;
     description: string | null;
-    categories: string[];
     coverPath: string | null;
     createdAt: Date;
     updatedAt: Date;
     epubPath: string | null;
+    bookTags?: Array<{
+      Tag: {
+        id: string;
+        name: string;
+        slug: string;
+      };
+    }>;
   }): PublicBookDTO {
+    const tags = (book.bookTags ?? []).map((bookTag) => ({
+      id: bookTag.Tag.id,
+      name: bookTag.Tag.name,
+      slug: bookTag.Tag.slug,
+    }));
+
     return {
       id: book.id,
       title: book.title,
       author: book.author,
       description: book.description,
-      categories: book.categories ?? [],
+      tags,
+      categories: tags.map((tag) => tag.name),
       coverUrl: book.coverPath ? `/books/${book.id}/cover` : null,
       createdAt: book.createdAt,
       updatedAt: book.updatedAt,
