@@ -34,7 +34,9 @@ describe("MangaService (unit)", () => {
     const result = await service.getAllMangas();
 
     expect(repo.findAllMangas).toHaveBeenCalledTimes(1);
-    expect(result).toEqual([{ id: "m-1", title: "One Piece" }]);
+    expect(result).toEqual([
+      expect.objectContaining({ id: "m-1", title: "One Piece" }),
+    ]);
   });
 
   it("getMangaById() should return repository value", async () => {
@@ -43,7 +45,7 @@ describe("MangaService (unit)", () => {
     const result = await service.getMangaById("m-1");
 
     expect(repo.findMangaById).toHaveBeenCalledWith("m-1");
-    expect(result).toEqual({ id: "m-1", title: "Naruto" });
+    expect(result).toEqual(expect.objectContaining({ id: "m-1", title: "Naruto" }));
   });
 
   it("createManga() should delegate to repository", async () => {
@@ -54,8 +56,9 @@ describe("MangaService (unit)", () => {
     expect(repo.createManga).toHaveBeenCalledWith({
       title: "Bleach",
       author: "Tite Kubo",
+      categories: [],
     });
-    expect(result).toEqual({ id: "m-1", title: "Bleach" });
+    expect(result).toEqual(expect.objectContaining({ id: "m-1", title: "Bleach" }));
   });
 
   it("createVolume() should fail when manga does not exist", async () => {
@@ -94,7 +97,7 @@ describe("MangaService (unit)", () => {
       number: 2,
       title: "Volume 2",
     });
-    expect(result).toEqual({ id: "v-1", mangaId: "m-1", number: 2 });
+    expect(result).toEqual(expect.objectContaining({ id: "v-1", mangaId: "m-1", number: 2 }));
   });
 
   // ── listVolumePages ──────────────────────────────────────────────
@@ -125,6 +128,7 @@ describe("MangaService (unit)", () => {
         title: "Chapter 1",
         pagesCount: 3,
         status: "READY",
+        coverUrl: null,
       });
       expect(result.pages).toEqual([
         { index: 1, imageUrl: "/manga/m-1/volumes/v-1/pages/1/image" },

@@ -1,10 +1,11 @@
 import path from "node:path";
-import type { FastifyRequest } from "fastify";
-import { notFound } from "../../shared/errors/error-factory.js";
-import { badRequest } from "../../shared/errors/error-factory.js";
+import type { FastifyReply, FastifyRequest } from "fastify";
+import { notFound, badRequest } from "../../shared/errors/error-factory.js";
 import { LocalStorageService } from "../../infrastructure/storage/LocalStorageService.js";
 import { BookRepository } from "./book.repository.js";
-import type { CreateBookDTO, PublicBookDTO } from "./book.types.js";
+import type { CreateBookDTO, PublicBookDTO, UpdateBookDTO } from "./book.types.js";
+import { normalizeCategories } from "../../shared/utils/normalize-categories.js";
+import { getImageContentType } from "../../shared/utils/get-image-content-type.js";
 
 export class BookService {
   constructor(
@@ -12,8 +13,8 @@ export class BookService {
     private storage: LocalStorageService
   ) {}
 
-  async getAllBooks() {
-    const books = await this.repo.findAllBooks();
+  async getAllBooks(categories: string[] = []) {
+    const books = await this.repo.findAllBooks(categories);
     return books.map((book) => this.toPublicBook(book));
   }
 
@@ -28,8 +29,29 @@ export class BookService {
   }
 
   async createBook(data: CreateBookDTO) {
-    const created = await this.repo.createBook(data);
+    const created = await this.repo.createBook({
+      ...data,
+      categories: normalizeCategories(data.categories ?? []),
+    });
     return this.toPublicBook(created);
+  }
+
+  async updateBook(bookId: string, data: UpdateBookDTO) {
+    const existing = await this.repo.findBookById(bookId);
+    if (!existing) {
+      throw notFound("BOOK_NOT_FOUND", "Book not found");
+    }
+
+    const updated = await this.repo.updateBook(bookId, {
+      ...(data.title !== undefined ? { title: data.title } : {}),
+      ...(data.author !== undefined ? { author: data.author } : {}),
+      ...(data.description !== undefined ? { description: data.description } : {}),
+      ...(data.categories !== undefined
+        ? { categories: normalizeCategories(data.categories) }
+        : {}),
+    });
+
+    return this.toPublicBook(updated);
   }
 
   async uploadEpub(req: FastifyRequest, bookId: string) {
@@ -38,17 +60,7 @@ export class BookService {
       throw notFound("BOOK_NOT_FOUND", "Book not found");
     }
 
-    let file: Awaited<ReturnType<FastifyRequest["file"]>>;
-    try {
-      file = await req.file();
-    } catch {
-      throw badRequest("NO_FILES_UPLOADED", "No files uploaded");
-    }
-
-    if (!file) {
-      throw badRequest("NO_FILES_UPLOADED", "No files uploaded");
-    }
-
+    const file = await this.getRequiredFile(req);
     const isEpubMime = file.mimetype === "application/epub+zip";
     const hasEpubExtension = path.extname(file.filename ?? "").toLowerCase() === ".epub";
 
@@ -68,11 +80,90 @@ export class BookService {
     return { uploaded: true };
   }
 
+  async uploadBookCover(req: FastifyRequest, bookId: string) {
+    const book = await this.repo.findBookById(bookId);
+    if (!book) {
+      throw notFound("BOOK_NOT_FOUND", "Book not found");
+    }
+
+    const file = await this.getRequiredFile(req);
+    const extension = this.resolveCoverExtension(file.filename, file.mimetype);
+    const coverDir = this.storage.resolveBookCoverDir(bookId);
+    const absolutePath = this.storage.resolveBookCoverPath(bookId, extension);
+    const relativePath = path.posix.join("books", bookId, "cover", `cover${extension}`);
+
+    await this.storage.ensureDir(coverDir);
+    await this.storage.removeFilesByPrefix(coverDir, "cover.");
+    await this.storage.saveStream(file.file, absolutePath);
+    await this.repo.updateBookCoverPath(bookId, relativePath);
+
+    return { uploaded: true };
+  }
+
+  async streamBookCover(reply: FastifyReply, bookId: string) {
+    const book = await this.repo.findBookById(bookId);
+    if (!book) {
+      throw notFound("BOOK_NOT_FOUND", "Book not found");
+    }
+
+    if (!book.coverPath) {
+      throw notFound("BOOK_COVER_NOT_FOUND", "Book cover not found");
+    }
+
+    const filepath = this.storage.resolveAbsolutePath(book.coverPath);
+    const exists = await this.storage.exists(filepath);
+    if (!exists) {
+      throw notFound("COVER_FILE_NOT_FOUND", "Cover file not found");
+    }
+
+    const stats = await this.storage.getFileStats(filepath);
+    const filename = path.basename(book.coverPath);
+    const contentType = getImageContentType(filename);
+
+    reply.header("Content-Type", contentType);
+    reply.header("Content-Length", stats.size.toString());
+    reply.header("Last-Modified", stats.mtime.toUTCString());
+    reply.header("Cache-Control", "private, max-age=86400");
+    reply.header("Content-Disposition", `inline; filename="${filename}"`);
+
+    return reply.send(this.storage.createReadStream(filepath));
+  }
+
+  private async getRequiredFile(req: FastifyRequest) {
+    let file: Awaited<ReturnType<FastifyRequest["file"]>>;
+    try {
+      file = await req.file();
+    } catch {
+      throw badRequest("NO_FILES_UPLOADED", "No files uploaded");
+    }
+
+    if (!file) {
+      throw badRequest("NO_FILES_UPLOADED", "No files uploaded");
+    }
+
+    return file;
+  }
+
+  private resolveCoverExtension(filename: string | undefined, mimetype: string) {
+    const ext = path.extname(filename ?? "").toLowerCase();
+    if (ext === ".png" || ext === ".jpg" || ext === ".jpeg" || ext === ".webp") {
+      return ext;
+    }
+
+    if (mimetype === "image/png") return ".png";
+    if (mimetype === "image/jpeg") return ".jpeg";
+    if (mimetype === "image/webp") return ".webp";
+
+    throw badRequest("INVALID_PARAMS", "Invalid image file");
+  }
+
   private toPublicBook(book: {
     id: string;
     title: string;
     author: string | null;
     description: string | null;
+    categories: string[];
+    coverPath: string | null;
     createdAt: Date;
     updatedAt: Date;
     epubPath: string | null;
@@ -82,6 +173,8 @@ export class BookService {
       title: book.title,
       author: book.author,
       description: book.description,
+      categories: book.categories ?? [],
+      coverUrl: book.coverPath ? `/books/${book.id}/cover` : null,
       createdAt: book.createdAt,
       updatedAt: book.updatedAt,
       hasEpub: Boolean(book.epubPath),

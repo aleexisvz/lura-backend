@@ -49,6 +49,41 @@ describe("Manga routes (api)", () => {
     ]);
   });
 
+  it("GET /manga?categories should filter by OR logic", async () => {
+    await prisma.manga.create({
+      data: {
+        title: "Action manga",
+        categories: ["action"],
+      },
+    });
+
+    await prisma.manga.create({
+      data: {
+        title: "Drama manga",
+        categories: ["drama"],
+      },
+    });
+
+    await prisma.manga.create({
+      data: {
+        title: "No match",
+        categories: ["sports"],
+      },
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/manga?categories=action,drama",
+      headers: buildAuthHeader(app, "USER"),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().map((manga: { title: string }) => manga.title).sort()).toEqual([
+      "Action manga",
+      "Drama manga",
+    ]);
+  });
+
   it("GET /manga/:mangaId should return manga by id", async () => {
     const manga = await prisma.manga.create({
       data: {
@@ -80,7 +115,7 @@ describe("Manga routes (api)", () => {
 
     expect(response.statusCode).toBe(404);
     expect(response.json()).toEqual({
-      code: "NOT_FOUND",
+      code: "MANGA_NOT_FOUND",
       message: "Manga not found",
       details: null,
     });
@@ -103,6 +138,33 @@ describe("Manga routes (api)", () => {
         id: expect.any(String),
         title: "One Piece",
         author: "Eiichiro Oda",
+      })
+    );
+  });
+
+  it("PATCH /manga/:mangaId should update metadata", async () => {
+    const manga = await prisma.manga.create({
+      data: {
+        title: "Old title",
+        categories: ["old"],
+      },
+    });
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/manga/${manga.id}`,
+      headers: buildAuthHeader(app, "ADMIN"),
+      payload: {
+        title: "New title",
+        categories: [" Action ", "action", "drama"],
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(
+      expect.objectContaining({
+        title: "New title",
+        categories: ["action", "drama"],
       })
     );
   });

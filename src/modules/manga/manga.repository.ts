@@ -1,19 +1,35 @@
 import { prisma } from "../../infrastructure/database/prisma.js"
+import type { UpdateMangaDTO, UpdateVolumeDTO } from "./manga.types.js"
 
 export class MangaRepository {
 
-  findAllMangas() {
+  findAllMangas(categories: string[] = []) {
     return prisma.manga.findMany({
+      where: categories.length > 0 ? { categories: { hasSome: categories } } : undefined,
       orderBy: {
         createdAt: "desc",
       },
     })
   }
 
-  createManga(data: { title: string; author?: string }) {
+  createManga(data: { title: string; author?: string; categories?: string[] }) {
     return prisma.manga.create({
       data,
     })
+  }
+
+  updateManga(mangaId: string, data: UpdateMangaDTO) {
+    return prisma.manga.update({
+      where: { id: mangaId },
+      data,
+    });
+  }
+
+  updateMangaCoverPath(mangaId: string, coverPath: string) {
+    return prisma.manga.update({
+      where: { id: mangaId },
+      data: { coverPath },
+    });
   }
 
   findMangaById(id: string) {
@@ -39,6 +55,20 @@ export class MangaRepository {
     return prisma.volume.findUnique({
       where: { id },
     })
+  }
+
+  updateVolume(volumeId: string, data: UpdateVolumeDTO) {
+    return prisma.volume.update({
+      where: { id: volumeId },
+      data,
+    });
+  }
+
+  updateVolumeCoverPath(volumeId: string, coverPath: string) {
+    return prisma.volume.update({
+      where: { id: volumeId },
+      data: { coverPath },
+    });
   }
 
   findVolumesByMangaId(mangaId: string) {

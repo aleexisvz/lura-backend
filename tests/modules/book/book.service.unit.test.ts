@@ -8,7 +8,9 @@ describe("BookService (unit)", () => {
     findAllBooks: vi.fn(),
     findBookById: vi.fn(),
     createBook: vi.fn(),
+    updateBook: vi.fn(),
     updateBookEpubPath: vi.fn(),
+    updateBookCoverPath: vi.fn(),
   };
 
   const storage = {
@@ -96,12 +98,14 @@ describe("BookService (unit)", () => {
       title: "Dune",
       author: "Frank Herbert",
       description: "Sci-fi classic",
+      categories: ["Sci-Fi", "classic", "sci-fi"],
     });
 
     expect(repo.createBook).toHaveBeenCalledWith({
       title: "Dune",
       author: "Frank Herbert",
       description: "Sci-fi classic",
+      categories: ["sci-fi", "classic"],
     });
     expect(result).toEqual(
       expect.objectContaining({

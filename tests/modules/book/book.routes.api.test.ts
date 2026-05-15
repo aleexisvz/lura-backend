@@ -44,6 +44,33 @@ describe("Book routes (api)", () => {
     );
   });
 
+  it("PATCH /books/:bookId should update metadata", async () => {
+    const book = await prisma.book.create({
+      data: {
+        title: "Old title",
+        categories: ["old"],
+      },
+    });
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/books/${book.id}`,
+      headers: buildAuthHeader(app, "ADMIN"),
+      payload: {
+        title: "New title",
+        categories: [" Sci-Fi ", "sci-fi", "classic"],
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(
+      expect.objectContaining({
+        title: "New title",
+        categories: ["sci-fi", "classic"],
+      })
+    );
+  });
+
   it("POST /books should reject non-admin users", async () => {
     const response = await app.inject({
       method: "POST",
@@ -175,6 +202,41 @@ describe("Book routes (api)", () => {
     expect(response.json().map((book: { title: string }) => book.title)).toEqual([
       "Newer",
       "Older",
+    ]);
+  });
+
+  it("GET /books?categories should filter by OR logic", async () => {
+    await prisma.book.create({
+      data: {
+        title: "Fantasy book",
+        categories: ["fantasy"],
+      },
+    });
+
+    await prisma.book.create({
+      data: {
+        title: "History book",
+        categories: ["history"],
+      },
+    });
+
+    await prisma.book.create({
+      data: {
+        title: "No match",
+        categories: ["science"],
+      },
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/books?categories=fantasy,history",
+      headers: buildAuthHeader(app, "USER"),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().map((book: { title: string }) => book.title).sort()).toEqual([
+      "Fantasy book",
+      "History book",
     ]);
   });
 
