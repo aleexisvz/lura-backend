@@ -79,13 +79,14 @@ export class ReadingSessionService {
 
     async getUserReadingStats(userId: string) {
         // Run all aggregations in parallel since they are independent.
-        const [total, manga, book, totalSessions, pagesSum, totalVolumesRead] = await Promise.all([
+        const [total, manga, book, totalSessions, pagesSum, totalVolumesRead, totalMangasRead] = await Promise.all([
             this.repo.getTotalReadingTimeByUser(userId),
             this.repo.getTotalReadingTimeByUserAndType(userId, "MANGA"),
             this.repo.getTotalReadingTimeByUserAndType(userId, "BOOK"),
             this.repo.countCompletedByUser(userId),
             this.progressRepo.sumPagesReadByUser(userId),
             this.completionRepo.totalCompletedByUser(userId),
+            this.completionRepo.countCompletedMangasByUser(userId),
         ]);
 
         const totalSeconds = total._sum.durationSeconds ?? 0;
@@ -98,6 +99,7 @@ export class ReadingSessionService {
             bookSeconds: book._sum.durationSeconds ?? 0,
             totalPagesRead: (pagesSum._sum.page ?? 0) + (pagesSum._sum.historicalPagesRead ?? 0),
             totalVolumesRead,
+            totalMangasRead,
         };
     }
 }

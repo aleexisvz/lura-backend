@@ -18,6 +18,7 @@ describe("ReadingSessionService (unit)", () => {
 
   const completionRepo = {
     totalCompletedByUser: vi.fn(),
+    countCompletedMangasByUser: vi.fn(),
   };
 
   let service: ReadingSessionService;
@@ -34,6 +35,7 @@ describe("ReadingSessionService (unit)", () => {
       _sum: { page: 0, historicalPagesRead: 0 },
     });
     completionRepo.totalCompletedByUser.mockResolvedValue(0);
+    completionRepo.countCompletedMangasByUser.mockResolvedValue(0);
   });
 
   it("startSession() should create new session when no open session", async () => {
@@ -154,6 +156,7 @@ describe("ReadingSessionService (unit)", () => {
       _sum: { page: 120, historicalPagesRead: 30 },
     });
     completionRepo.totalCompletedByUser.mockResolvedValue(7);
+    completionRepo.countCompletedMangasByUser.mockResolvedValue(2);
 
     const result = await service.getUserReadingStats("user-1");
 
@@ -165,6 +168,7 @@ describe("ReadingSessionService (unit)", () => {
       bookSeconds: 1200,
       totalPagesRead: 150,
       totalVolumesRead: 7,
+      totalMangasRead: 2,
     });
   });
 
@@ -180,6 +184,7 @@ describe("ReadingSessionService (unit)", () => {
       _sum: { page: null, historicalPagesRead: null },
     });
     completionRepo.totalCompletedByUser.mockResolvedValue(0);
+    completionRepo.countCompletedMangasByUser.mockResolvedValue(0);
 
     const result = await service.getUserReadingStats("user-1");
 
@@ -191,6 +196,7 @@ describe("ReadingSessionService (unit)", () => {
       bookSeconds: 0,
       totalPagesRead: 0,
       totalVolumesRead: 0,
+      totalMangasRead: 0,
     });
   });
 });

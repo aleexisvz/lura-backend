@@ -142,6 +142,7 @@ describe("ReadingSession routes (api)", () => {
       bookSeconds: 0,
       totalPagesRead: 0,
       totalVolumesRead: 0,
+      totalMangasRead: 0,
     });
   });
 
@@ -170,6 +171,7 @@ describe("ReadingSession routes (api)", () => {
     expect(stats.totalSeconds).toBeGreaterThanOrEqual(0);
     expect(stats.mangaSeconds).toBeGreaterThanOrEqual(0);
     expect(stats.bookSeconds).toBe(0);
+    expect(stats.totalMangasRead).toBeGreaterThanOrEqual(0);
   });
 
   it("POST /reading/sessions/start should require auth", async () => {
