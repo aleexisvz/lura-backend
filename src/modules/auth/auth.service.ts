@@ -23,10 +23,16 @@ export class AuthService {
       throw conflict("EMAIL_ALREADY_IN_USE", "Email already in use");
     }
 
+    const username = dto.username.trim().toLowerCase();
+    const existingUsername = await this.repo.findUserByUsername(username);
+    if (existingUsername) {
+      throw conflict("USERNAME_ALREADY_IN_USE", "Username already in use");
+    }
+
     // Salt rounds = 10 is the bcrypt default and a good balance between
     // security and performance (~100ms on modern hardware).
     const passwordHash = await bcrypt.hash(dto.password, 10);
-    const user = await this.repo.createUser(email, passwordHash);
+    const user = await this.repo.createUser(email, username, passwordHash);
 
     // JWT payload: { email, role } are custom claims; sub (subject) = userId
     // follows the JWT standard and is used to identify the user on each request.
@@ -61,7 +67,15 @@ export class AuthService {
 
     // The password field is intentionally omitted from the response —
     // only the public user shape is returned.
-    return { token, user: { id: user.id, email: user.email } };
+    return {
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+      },
+    };
   }
 
   async promoteToAdmin(email: string) {

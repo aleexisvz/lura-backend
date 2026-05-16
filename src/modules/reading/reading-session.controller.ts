@@ -11,6 +11,10 @@ const EndSessionParamsSchema = z.object({
     sessionId: z.string().min(1),
 });
 
+const RecentSeriesQuerySchema = z.object({
+    limit: z.coerce.number().int().min(1).max(50).optional(),
+});
+
 export class ReadingSessionController {
     constructor(private service: ReadingSessionService) { }
 
@@ -41,6 +45,14 @@ export class ReadingSessionController {
 
         const result = await this.service.getUserReadingStats(userId);
 
+        return reply.send(result);
+    };
+
+    getRecentSeries = async (req: FastifyRequest, reply: FastifyReply) => {
+        const userId = (req.user as any).sub;
+        const { limit } = RecentSeriesQuerySchema.parse(req.query);
+
+        const result = await this.service.getRecentSeries(userId, limit ?? 12);
         return reply.send(result);
     };
 }

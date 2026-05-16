@@ -4,6 +4,12 @@ import { AuthService } from "./auth.service.js";
 
 const RegisterSchema = z.object({
   email: z.string().trim().email(),
+  username: z
+    .string()
+    .trim()
+    .min(3)
+    .max(32)
+    .regex(/^[a-zA-Z0-9_]+$/),
   password: z.string().min(6),
 });
 

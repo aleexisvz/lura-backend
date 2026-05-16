@@ -25,6 +25,7 @@ describe("Auth routes (api)", () => {
       url: "/auth/register",
       payload: {
         email: "user@test.dev",
+        username: "user_test",
         password: "secret123",
       },
     });
@@ -34,7 +35,12 @@ describe("Auth routes (api)", () => {
     const body = response.json();
     expect(body.token).toEqual(expect.any(String));
     expect(body.user).toEqual(
-      expect.objectContaining({ email: "user@test.dev", id: expect.any(String) })
+      expect.objectContaining({
+        email: "user@test.dev",
+        username: "user_test",
+        role: "USER",
+        id: expect.any(String),
+      })
     );
   });
 
@@ -44,6 +50,7 @@ describe("Auth routes (api)", () => {
       url: "/auth/register",
       payload: {
         email: "not-an-email",
+        username: "ab",
         password: "123",
       },
     });
@@ -63,6 +70,7 @@ describe("Auth routes (api)", () => {
       url: "/auth/register",
       payload: {
         email: "login@test.dev",
+        username: "login_user",
         password: "secret123",
       },
     });
@@ -82,6 +90,8 @@ describe("Auth routes (api)", () => {
       user: {
         id: expect.any(String),
         email: "login@test.dev",
+        username: "login_user",
+        role: "USER",
       },
     });
   });
@@ -92,6 +102,7 @@ describe("Auth routes (api)", () => {
       url: "/auth/register",
       payload: {
         email: "login@test.dev",
+        username: "login_user",
         password: "secret123",
       },
     });

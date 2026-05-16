@@ -19,6 +19,7 @@ describe("ReadingSession routes (api)", () => {
       data: {
         id: "user-test-id",
         email: "user@tests.local",
+        username: "user_test",
         password: "hashed",
       },
     });
@@ -143,6 +144,8 @@ describe("ReadingSession routes (api)", () => {
       totalPagesRead: 0,
       totalVolumesRead: 0,
       totalMangasRead: 0,
+      totalSeriesRead: 0,
+      totalBooksRead: 0,
     });
   });
 
@@ -172,6 +175,57 @@ describe("ReadingSession routes (api)", () => {
     expect(stats.mangaSeconds).toBeGreaterThanOrEqual(0);
     expect(stats.bookSeconds).toBe(0);
     expect(stats.totalMangasRead).toBeGreaterThanOrEqual(0);
+    expect(stats.totalSeriesRead).toBeGreaterThanOrEqual(0);
+    expect(stats.totalBooksRead).toBeGreaterThanOrEqual(0);
+  });
+
+  it("GET /users/me/recent-series should return separated recent manga and books", async () => {
+    await app.inject({
+      method: "POST",
+      url: "/reading/sessions/start",
+      headers: buildAuthHeader(app, "USER"),
+      payload: { contentType: "MANGA", contentId: "manga-1" },
+    });
+
+    await app.inject({
+      method: "POST",
+      url: "/reading/sessions/start",
+      headers: buildAuthHeader(app, "USER"),
+      payload: { contentType: "BOOK", contentId: "book-1" },
+    });
+
+    await prisma.manga.create({
+      data: { id: "manga-1", title: "Manga One" },
+    });
+    await prisma.book.create({
+      data: { id: "book-1", title: "Book One" },
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/users/me/recent-series?limit=12",
+      headers: buildAuthHeader(app, "USER"),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      manga: [
+        expect.objectContaining({
+          contentId: "manga-1",
+          title: "Manga One",
+          coverUrl: null,
+          lastStartedAt: expect.any(String),
+        }),
+      ],
+      books: [
+        expect.objectContaining({
+          contentId: "book-1",
+          title: "Book One",
+          coverUrl: null,
+          lastStartedAt: expect.any(String),
+        }),
+      ],
+    });
   });
 
   it("POST /reading/sessions/start should require auth", async () => {
@@ -207,6 +261,20 @@ describe("ReadingSession routes (api)", () => {
     const response = await app.inject({
       method: "GET",
       url: "/users/me/reading-stats",
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toMatchObject({
+      code: "UNAUTHORIZED",
+      message: expect.any(String),
+      details: null,
+    });
+  });
+
+  it("GET /users/me/recent-series should require auth", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/users/me/recent-series",
     });
 
     expect(response.statusCode).toBe(401);

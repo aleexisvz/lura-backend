@@ -7,7 +7,9 @@ export class UsersRepository {
       select: {
         id: true,
         email: true,
+        username: true,
         role: true,
+        createdAt: true,
         profileImagePath: true,
       },
     });
@@ -20,10 +22,11 @@ export class UsersRepository {
       select: {
         id: true,
         email: true,
+        username: true,
         role: true,
+        createdAt: true,
         profileImagePath: true,
       },
     });
   }
 }
-

@@ -10,6 +10,10 @@ describe("ReadingSessionService (unit)", () => {
     getTotalReadingTimeByUser: vi.fn(),
     getTotalReadingTimeByUserAndType: vi.fn(),
     countCompletedByUser: vi.fn(),
+    countDistinctCompletedSeriesByUser: vi.fn(),
+    countDistinctCompletedBooksByUser: vi.fn(),
+    findRecentMangaSeriesByUser: vi.fn(),
+    findRecentBookSeriesByUser: vi.fn(),
   };
 
   const progressRepo = {
@@ -36,6 +40,10 @@ describe("ReadingSessionService (unit)", () => {
     });
     completionRepo.totalCompletedByUser.mockResolvedValue(0);
     completionRepo.countCompletedMangasByUser.mockResolvedValue(0);
+    repo.countDistinctCompletedSeriesByUser.mockResolvedValue(0);
+    repo.countDistinctCompletedBooksByUser.mockResolvedValue(0);
+    repo.findRecentMangaSeriesByUser.mockResolvedValue([]);
+    repo.findRecentBookSeriesByUser.mockResolvedValue([]);
   });
 
   it("startSession() should create new session when no open session", async () => {
@@ -157,6 +165,8 @@ describe("ReadingSessionService (unit)", () => {
     });
     completionRepo.totalCompletedByUser.mockResolvedValue(7);
     completionRepo.countCompletedMangasByUser.mockResolvedValue(2);
+    repo.countDistinctCompletedSeriesByUser.mockResolvedValue(4);
+    repo.countDistinctCompletedBooksByUser.mockResolvedValue(2);
 
     const result = await service.getUserReadingStats("user-1");
 
@@ -169,6 +179,8 @@ describe("ReadingSessionService (unit)", () => {
       totalPagesRead: 150,
       totalVolumesRead: 7,
       totalMangasRead: 2,
+      totalSeriesRead: 4,
+      totalBooksRead: 2,
     });
   });
 
@@ -185,6 +197,8 @@ describe("ReadingSessionService (unit)", () => {
     });
     completionRepo.totalCompletedByUser.mockResolvedValue(0);
     completionRepo.countCompletedMangasByUser.mockResolvedValue(0);
+    repo.countDistinctCompletedSeriesByUser.mockResolvedValue(0);
+    repo.countDistinctCompletedBooksByUser.mockResolvedValue(0);
 
     const result = await service.getUserReadingStats("user-1");
 
@@ -197,6 +211,50 @@ describe("ReadingSessionService (unit)", () => {
       totalPagesRead: 0,
       totalVolumesRead: 0,
       totalMangasRead: 0,
+      totalSeriesRead: 0,
+      totalBooksRead: 0,
+    });
+  });
+
+  it("getRecentSeries() should return items ordered and mapped by type", async () => {
+    repo.findRecentMangaSeriesByUser.mockResolvedValue([
+      {
+        contentId: "m-1",
+        title: "Manga 1",
+        coverPath: "manga/m-1/cover/cover.webp",
+        lastStartedAt: new Date("2026-05-01T10:00:00.000Z"),
+      },
+    ]);
+    repo.findRecentBookSeriesByUser.mockResolvedValue([
+      {
+        contentId: "b-1",
+        title: "Book 1",
+        coverPath: null,
+        lastStartedAt: new Date("2026-05-01T09:00:00.000Z"),
+      },
+    ]);
+
+    const result = await service.getRecentSeries("user-1", 12);
+
+    expect(repo.findRecentMangaSeriesByUser).toHaveBeenCalledWith("user-1", 12);
+    expect(repo.findRecentBookSeriesByUser).toHaveBeenCalledWith("user-1", 12);
+    expect(result).toEqual({
+      manga: [
+        {
+          contentId: "m-1",
+          title: "Manga 1",
+          coverUrl: "/manga/m-1/cover",
+          lastStartedAt: new Date("2026-05-01T10:00:00.000Z"),
+        },
+      ],
+      books: [
+        {
+          contentId: "b-1",
+          title: "Book 1",
+          coverUrl: null,
+          lastStartedAt: new Date("2026-05-01T09:00:00.000Z"),
+        },
+      ],
     });
   });
 });

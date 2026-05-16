@@ -15,7 +15,7 @@ describe("MangaProgressRepository (integration)", () => {
         await resetTestDatabase();
 
         const user = await prisma.user.create({
-            data: { email: "reader@test.dev", password: "hash" },
+            data: { email: "reader@test.dev", username: "reader_test", password: "hash" },
         });
         userId = user.id;
 

@@ -79,7 +79,17 @@ export class ReadingSessionService {
 
     async getUserReadingStats(userId: string) {
         // Run all aggregations in parallel since they are independent.
-        const [total, manga, book, totalSessions, pagesSum, totalVolumesRead, totalMangasRead] = await Promise.all([
+        const [
+            total,
+            manga,
+            book,
+            totalSessions,
+            pagesSum,
+            totalVolumesRead,
+            totalMangasRead,
+            totalSeriesRead,
+            totalBooksRead,
+        ] = await Promise.all([
             this.repo.getTotalReadingTimeByUser(userId),
             this.repo.getTotalReadingTimeByUserAndType(userId, "MANGA"),
             this.repo.getTotalReadingTimeByUserAndType(userId, "BOOK"),
@@ -87,6 +97,8 @@ export class ReadingSessionService {
             this.progressRepo.sumPagesReadByUser(userId),
             this.completionRepo.totalCompletedByUser(userId),
             this.completionRepo.countCompletedMangasByUser(userId),
+            this.repo.countDistinctCompletedSeriesByUser(userId),
+            this.repo.countDistinctCompletedBooksByUser(userId),
         ]);
 
         const totalSeconds = total._sum.durationSeconds ?? 0;
@@ -100,6 +112,30 @@ export class ReadingSessionService {
             totalPagesRead: (pagesSum._sum.page ?? 0) + (pagesSum._sum.historicalPagesRead ?? 0),
             totalVolumesRead,
             totalMangasRead,
+            totalSeriesRead,
+            totalBooksRead,
+        };
+    }
+
+    async getRecentSeries(userId: string, limit = 12) {
+        const [manga, books] = await Promise.all([
+            this.repo.findRecentMangaSeriesByUser(userId, limit),
+            this.repo.findRecentBookSeriesByUser(userId, limit),
+        ]);
+
+        return {
+            manga: manga.map((item) => ({
+                contentId: item.contentId,
+                title: item.title,
+                coverUrl: item.coverPath ? `/manga/${item.contentId}/cover` : null,
+                lastStartedAt: item.lastStartedAt,
+            })),
+            books: books.map((item) => ({
+                contentId: item.contentId,
+                title: item.title,
+                coverUrl: item.coverPath ? `/books/${item.contentId}/cover` : null,
+                lastStartedAt: item.lastStartedAt,
+            })),
         };
     }
 }

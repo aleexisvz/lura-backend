@@ -19,6 +19,7 @@ describe("MangaProgress routes (api)", () => {
       data: {
         id: "user-test-id",
         email: "user@tests.local",
+        username: "user_test",
         password: "hashed",
       },
     });

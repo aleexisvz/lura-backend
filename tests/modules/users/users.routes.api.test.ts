@@ -38,6 +38,7 @@ describe("Users routes (api)", () => {
       data: {
         id: "user-test-id",
         email: "user@tests.local",
+        username: "user_test",
         password: "hash",
         role: "USER",
       },
@@ -54,7 +55,9 @@ describe("Users routes (api)", () => {
       expect.objectContaining({
         id: "user-test-id",
         email: "user@tests.local",
+        username: "user_test",
         role: "USER",
+        createdAt: expect.any(String),
         profileImageUrl: null,
       })
     );
@@ -65,6 +68,7 @@ describe("Users routes (api)", () => {
       data: {
         id: "user-test-id",
         email: "user@tests.local",
+        username: "user_test",
         password: "hash",
         role: "USER",
       },
@@ -89,6 +93,7 @@ describe("Users routes (api)", () => {
       data: {
         id: "user-test-id",
         email: "user@tests.local",
+        username: "user_test",
         password: "hash",
         role: "USER",
       },
@@ -108,4 +113,3 @@ describe("Users routes (api)", () => {
     );
   });
 });
-

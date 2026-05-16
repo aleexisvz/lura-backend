@@ -26,4 +26,10 @@ export async function readingSessionRoutes(app: FastifyInstance) {
         { preHandler: requireAuth },
         controller.getMyStats
     );
+
+    app.get(
+        "/users/me/recent-series",
+        { preHandler: requireAuth },
+        controller.getRecentSeries
+    );
 }

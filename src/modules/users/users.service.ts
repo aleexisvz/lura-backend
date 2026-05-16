@@ -114,15 +114,18 @@ export class UsersService {
   private toPublicUser(user: {
     id: string;
     email: string;
+    username: string;
     role: "USER" | "ADMIN";
+    createdAt: Date;
     profileImagePath: string | null;
   }): PublicUserDTO {
     return {
       id: user.id,
       email: user.email,
+      username: user.username,
       role: user.role,
+      createdAt: user.createdAt,
       profileImageUrl: user.profileImagePath ? "/users/me/profile-image" : null,
     };
   }
 }
-

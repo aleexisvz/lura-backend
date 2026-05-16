@@ -18,10 +18,11 @@ describe("AuthRepository (integration)", () => {
   });
 
   it("createUser() should persist user and return public fields", async () => {
-    const created = await repo.createUser("user@test.dev", "hash-secret");
+    const created = await repo.createUser("user@test.dev", "user_test", "hash-secret");
 
     expect(created).toMatchObject({
       email: "user@test.dev",
+      username: "user_test",
       role: "USER",
     });
 
@@ -43,6 +44,7 @@ describe("AuthRepository (integration)", () => {
     await prisma.user.create({
       data: {
         email: "seed@test.dev",
+        username: "seed_user",
         password: "seed-hash",
       },
     });
@@ -58,6 +60,7 @@ describe("AuthRepository (integration)", () => {
     const seeded = await prisma.user.create({
       data: {
         email: "public@test.dev",
+        username: "public_user",
         password: "seed-hash",
       },
     });
@@ -67,6 +70,7 @@ describe("AuthRepository (integration)", () => {
     expect(user).toEqual({
       id: seeded.id,
       email: "public@test.dev",
+      username: "public_user",
     });
   });
 });
