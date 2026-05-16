@@ -112,6 +112,14 @@ export class LocalStorageService {
     return path.join(this.resolveBookCoverDir(bookId), `cover${extension}`);
   }
 
+  resolveUserProfileImageDir(userId: string) {
+    return path.join(process.cwd(), "storage", "users", userId, "profile");
+  }
+
+  resolveUserProfileImagePath(userId: string, extension: string) {
+    return path.join(this.resolveUserProfileImageDir(userId), `avatar${extension}`);
+  }
+
   resolveAbsolutePath(relativePath: string) {
     return path.join(process.cwd(), "storage", ...relativePath.split("/"));
   }

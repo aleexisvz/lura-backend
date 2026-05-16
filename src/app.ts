@@ -10,6 +10,7 @@ import { mangaProgressRoutes } from "./modules/reading/manga-progress.routes.js"
 import { readingSessionRoutes } from "./modules/reading/reading-session.routes.js";
 import { volumeCompletionRoutes } from "./modules/reading/volume-completion.routes.js";
 import { tagsRoutes } from "./modules/tags/tags.routes.js";
+import { usersRoutes } from "./modules/users/users.routes.js";
 
 function defaultErrorCodeByStatus(statusCode: number) {
   if (statusCode >= 500) return "INTERNAL_ERROR";
@@ -143,6 +144,7 @@ export async function buildApp() {
 
   await app.register(authRoutes, { prefix: "/auth" });
   await app.register(bookRoutes, { prefix: "/books" });
+  await app.register(usersRoutes, { prefix: "/users" });
 
   await app.register(mangaRoutes, { prefix: "/manga" })
   await app.register(tagsRoutes, { prefix: "/tags" })

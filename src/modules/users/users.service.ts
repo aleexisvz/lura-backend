@@ -1,0 +1,128 @@
+import path from "node:path";
+import type { FastifyReply, FastifyRequest } from "fastify";
+import { LocalStorageService } from "../../infrastructure/storage/LocalStorageService.js";
+import { badRequest, notFound } from "../../shared/errors/error-factory.js";
+import { getImageContentType } from "../../shared/utils/get-image-content-type.js";
+import { UsersRepository } from "./users.repository.js";
+import type { PublicUserDTO } from "./users.types.js";
+
+const PROFILE_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
+
+export class UsersService {
+  constructor(
+    private readonly repo: UsersRepository,
+    private readonly storage: LocalStorageService
+  ) {}
+
+  async getMe(userId: string): Promise<PublicUserDTO> {
+    const user = await this.repo.findUserById(userId);
+    if (!user) {
+      throw notFound("USER_NOT_FOUND", "User not found");
+    }
+
+    return this.toPublicUser(user);
+  }
+
+  async uploadProfileImage(req: FastifyRequest, userId: string) {
+    const user = await this.repo.findUserById(userId);
+    if (!user) {
+      throw notFound("USER_NOT_FOUND", "User not found");
+    }
+
+    const file = await this.getRequiredImageFile(req);
+    const extension = this.resolveImageExtension(file.filename, file.mimetype);
+    const imageDir = this.storage.resolveUserProfileImageDir(userId);
+    const absolutePath = this.storage.resolveUserProfileImagePath(userId, extension);
+    const relativePath = path.posix.join("users", userId, "profile", `avatar${extension}`);
+
+    await this.storage.ensureDir(imageDir);
+    await this.storage.removeFilesByPrefix(imageDir, "avatar.");
+    await this.storage.saveStream(file.file, absolutePath);
+    const updated = await this.repo.updateProfileImagePath(userId, relativePath);
+
+    return {
+      uploaded: true,
+      profileImageUrl: updated.profileImagePath ? "/users/me/profile-image" : null,
+    };
+  }
+
+  async streamProfileImage(reply: FastifyReply, userId: string) {
+    const user = await this.repo.findUserById(userId);
+    if (!user) {
+      throw notFound("USER_NOT_FOUND", "User not found");
+    }
+
+    if (!user.profileImagePath) {
+      throw notFound("USER_PROFILE_IMAGE_NOT_FOUND", "Profile image not found");
+    }
+
+    const filepath = this.storage.resolveAbsolutePath(user.profileImagePath);
+    const exists = await this.storage.exists(filepath);
+    if (!exists) {
+      throw notFound("PROFILE_IMAGE_FILE_NOT_FOUND", "Profile image file not found");
+    }
+
+    const stats = await this.storage.getFileStats(filepath);
+    const filename = path.basename(user.profileImagePath);
+    const contentType = getImageContentType(filename);
+
+    reply.header("Content-Type", contentType);
+    reply.header("Content-Length", stats.size.toString());
+    reply.header("Last-Modified", stats.mtime.toUTCString());
+    reply.header("Cache-Control", "private, max-age=86400");
+    reply.header("Content-Disposition", `inline; filename="${filename}"`);
+
+    return reply.send(this.storage.createReadStream(filepath));
+  }
+
+  private async getRequiredImageFile(req: FastifyRequest) {
+    let file: Awaited<ReturnType<FastifyRequest["file"]>>;
+    try {
+      file = await req.file({
+        limits: {
+          files: 1,
+          fileSize: PROFILE_IMAGE_MAX_BYTES,
+        },
+      });
+    } catch (error) {
+      if ((error as { code?: string }).code === "FST_REQ_FILE_TOO_LARGE") {
+        throw badRequest("INVALID_PARAMS", "Profile image exceeds 2MB limit");
+      }
+      throw badRequest("NO_FILES_UPLOADED", "No files uploaded");
+    }
+
+    if (!file) {
+      throw badRequest("NO_FILES_UPLOADED", "No files uploaded");
+    }
+
+    return file;
+  }
+
+  private resolveImageExtension(filename: string | undefined, mimetype: string) {
+    const extension = path.extname(filename ?? "").toLowerCase();
+    if (extension === ".png" || extension === ".jpg" || extension === ".jpeg" || extension === ".webp") {
+      return extension;
+    }
+
+    if (mimetype === "image/png") return ".png";
+    if (mimetype === "image/jpeg") return ".jpeg";
+    if (mimetype === "image/webp") return ".webp";
+
+    throw badRequest("INVALID_PARAMS", "Invalid profile image file");
+  }
+
+  private toPublicUser(user: {
+    id: string;
+    email: string;
+    role: "USER" | "ADMIN";
+    profileImagePath: string | null;
+  }): PublicUserDTO {
+    return {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      profileImageUrl: user.profileImagePath ? "/users/me/profile-image" : null,
+    };
+  }
+}
+
