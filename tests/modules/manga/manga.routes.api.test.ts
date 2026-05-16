@@ -156,7 +156,9 @@ describe("Manga routes (api)", () => {
       headers: buildAuthHeader(app, "ADMIN"),
       payload: {
         title: "One Piece",
+        titleKanji: "ワンピース",
         author: "Eiichiro Oda",
+        description: "Piratas y aventura",
       },
     });
 
@@ -165,7 +167,9 @@ describe("Manga routes (api)", () => {
       expect.objectContaining({
         id: expect.any(String),
         title: "One Piece",
+        titleKanji: "ワンピース",
         author: "Eiichiro Oda",
+        description: "Piratas y aventura",
       })
     );
   });
@@ -208,6 +212,8 @@ describe("Manga routes (api)", () => {
       headers: buildAuthHeader(app, "ADMIN"),
       payload: {
         title: "New title",
+        titleKanji: "転生したらスライムだった件",
+        description: "Nueva descripcion",
         tagIds: [actionTag.id, actionTag.id, dramaTag.id],
       },
     });
@@ -216,6 +222,8 @@ describe("Manga routes (api)", () => {
     expect(response.json()).toEqual(
       expect.objectContaining({
         title: "New title",
+        titleKanji: "転生したらスライムだった件",
+        description: "Nueva descripcion",
         categories: ["Action", "drama"],
       })
     );

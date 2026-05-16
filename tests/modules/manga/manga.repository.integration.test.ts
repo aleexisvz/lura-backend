@@ -1,10 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "../../../src/infrastructure/database/prisma.js";
 import { MangaRepository } from "../../../src/modules/manga/manga.repository.js";
-import {
-  disconnectTestDatabase,
-  resetTestDatabase,
-} from "../../helpers/db.js";
+import { disconnectTestDatabase, resetTestDatabase } from "../../helpers/db.js";
 
 describe("MangaRepository (integration)", () => {
   const repo = new MangaRepository();
@@ -20,14 +17,18 @@ describe("MangaRepository (integration)", () => {
   it("createManga() and findMangaById() should persist and read manga", async () => {
     const created = await repo.createManga({
       title: "One Piece",
+      titleKanji: "ワンピース",
       author: "Eiichiro Oda",
+      description: "Piratas y aventura",
     });
 
     const found = await repo.findMangaById(created.id);
 
     expect(found).toBeTruthy();
     expect(found?.title).toBe("One Piece");
+    expect(found?.titleKanji).toBe("ワンピース");
     expect(found?.author).toBe("Eiichiro Oda");
+    expect(found?.description).toBe("Piratas y aventura");
   });
 
   it("getAllMangas() should return records ordered by createdAt desc", async () => {
@@ -47,10 +48,7 @@ describe("MangaRepository (integration)", () => {
 
     const mangas = await repo.findAllMangas();
 
-    expect(mangas.map((manga) => manga.title)).toEqual([
-      "Newer manga",
-      "Older manga",
-    ]);
+    expect(mangas.map((manga) => manga.title)).toEqual(["Newer manga", "Older manga"]);
   });
 
   it("createVolume() and findVolumesByMangaId() should manage ordered volumes", async () => {

@@ -37,7 +37,9 @@ describe("MangaService (unit)", () => {
       {
         id: "m-1",
         title: "One Piece",
+        titleKanji: null,
         author: "Eiichiro Oda",
+        description: null,
         coverPath: null,
         createdAt: new Date("2026-01-01T00:00:00.000Z"),
         mangaTags: [],
@@ -56,7 +58,9 @@ describe("MangaService (unit)", () => {
     repo.findMangaById.mockResolvedValue({
       id: "m-1",
       title: "Naruto",
+      titleKanji: "ナルト",
       author: null,
+      description: null,
       coverPath: null,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
       mangaTags: [],
@@ -72,7 +76,9 @@ describe("MangaService (unit)", () => {
     repo.createManga.mockResolvedValue({
       id: "m-1",
       title: "Bleach",
+      titleKanji: "ブリーチ",
       author: "Tite Kubo",
+      description: null,
       coverPath: null,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
       mangaTags: [],

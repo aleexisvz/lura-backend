@@ -30,11 +30,19 @@ export class MangaRepository {
     });
   }
 
-  createManga(data: { title: string; author?: string; tagIds?: string[] }) {
+  createManga(data: {
+    title: string;
+    titleKanji?: string;
+    author?: string;
+    description?: string;
+    tagIds?: string[];
+  }) {
     return prisma.manga.create({
       data: {
         title: data.title,
+        ...(data.titleKanji !== undefined ? { titleKanji: data.titleKanji } : {}),
         ...(data.author !== undefined ? { author: data.author } : {}),
+        ...(data.description !== undefined ? { description: data.description } : {}),
         ...(data.tagIds !== undefined
           ? {
               mangaTags: {
@@ -55,7 +63,9 @@ export class MangaRepository {
       where: { id: mangaId },
       data: {
         ...(data.title !== undefined ? { title: data.title } : {}),
+        ...(data.titleKanji !== undefined ? { titleKanji: data.titleKanji } : {}),
         ...(data.author !== undefined ? { author: data.author } : {}),
+        ...(data.description !== undefined ? { description: data.description } : {}),
         ...(data.tagIds !== undefined
           ? {
               mangaTags: {

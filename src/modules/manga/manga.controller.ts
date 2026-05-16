@@ -26,14 +26,18 @@ const MangaListQuerySchema = z.object({
 
 const CreateMangaSchema = z.object({
   title: z.string().trim().min(1),
+  titleKanji: z.string().trim().min(1).optional(),
   author: z.string().trim().min(1).optional(),
+  description: z.string().trim().min(1).optional(),
   tagIds: tagIdsSchema.optional(),
 });
 
 const UpdateMangaSchema = z
   .object({
     title: z.string().trim().min(1).optional(),
+    titleKanji: z.string().trim().min(1).optional(),
     author: z.string().trim().min(1).optional(),
+    description: z.string().trim().min(1).optional(),
     tagIds: tagIdsSchema.optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
@@ -88,9 +92,15 @@ export class MangaController {
   };
 
   createManga = async (req: FastifyRequest, reply: FastifyReply) => {
-    const { title, author, tagIds } = CreateMangaSchema.parse(req.body);
+    const { title, titleKanji, author, description, tagIds } = CreateMangaSchema.parse(req.body);
 
-    const manga = await this.service.createManga(title, author, tagIds ?? []);
+    const manga = await this.service.createManga(
+      title,
+      author,
+      tagIds ?? [],
+      titleKanji,
+      description
+    );
 
     return reply.send(manga);
   };
@@ -100,7 +110,9 @@ export class MangaController {
     const body = UpdateMangaSchema.parse(req.body);
     const payload = {
       ...(body.title !== undefined ? { title: body.title } : {}),
+      ...(body.titleKanji !== undefined ? { titleKanji: body.titleKanji } : {}),
       ...(body.author !== undefined ? { author: body.author } : {}),
+      ...(body.description !== undefined ? { description: body.description } : {}),
       ...(body.tagIds !== undefined ? { tagIds: body.tagIds } : {}),
     };
 

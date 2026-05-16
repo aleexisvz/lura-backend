@@ -34,7 +34,9 @@ enum Role {
 model Manga {
   id        String   @id @default(cuid())
   title     String
+  titleKanji String?
   author    String?
+  description String?
   coverPath String?
 
   volumes   Volume[]

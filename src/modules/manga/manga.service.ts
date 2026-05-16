@@ -13,7 +13,9 @@ import { TagsRepository } from "../tags/tags.repository.js";
 type RawManga = {
   id: string;
   title: string;
+  titleKanji: string | null;
   author: string | null;
+  description: string | null;
   coverPath: string | null;
   createdAt: Date;
   mangaTags?: Array<{
@@ -59,11 +61,19 @@ export class MangaService {
     return volumes.map((volume) => this.toPublicVolume(volume));
   }
 
-  async createManga(title: string, author?: string, tagIds: string[] = []) {
+  async createManga(
+    title: string,
+    author?: string,
+    tagIds: string[] = [],
+    titleKanji?: string,
+    description?: string
+  ) {
     const validTagIds = await this.assertTagIdsForScope(tagIds, "MANGA");
     const created = await this.repo.createManga({
       title,
+      ...(titleKanji !== undefined ? { titleKanji } : {}),
       ...(author && { author }),
+      ...(description !== undefined ? { description } : {}),
       tagIds: validTagIds,
     });
 
@@ -72,7 +82,13 @@ export class MangaService {
 
   async updateManga(
     mangaId: string,
-    data: { title?: string; author?: string; tagIds?: string[] }
+    data: {
+      title?: string;
+      titleKanji?: string;
+      author?: string;
+      description?: string;
+      tagIds?: string[];
+    }
   ) {
     const existing = await this.repo.findMangaById(mangaId);
     if (!existing) {
@@ -84,7 +100,9 @@ export class MangaService {
 
     const updated = await this.repo.updateManga(mangaId, {
       ...(data.title !== undefined ? { title: data.title } : {}),
+      ...(data.titleKanji !== undefined ? { titleKanji: data.titleKanji } : {}),
       ...(data.author !== undefined ? { author: data.author } : {}),
+      ...(data.description !== undefined ? { description: data.description } : {}),
       ...(validTagIds !== undefined ? { tagIds: validTagIds } : {}),
     });
 
@@ -408,7 +426,9 @@ export class MangaService {
     return {
       id: manga.id,
       title: manga.title,
+      titleKanji: manga.titleKanji,
       author: manga.author,
+      description: manga.description,
       tags,
       categories: tags.map((tag) => tag.name),
       coverUrl: this.toCoverUrl(manga.coverPath, `/manga/${manga.id}/cover`),

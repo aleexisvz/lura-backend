@@ -1,12 +1,16 @@
 export type CreateMangaDTO = {
   title: string
+  titleKanji?: string
   author?: string
+  description?: string
   tagIds?: string[]
 }
 
 export type UpdateMangaDTO = {
   title?: string
+  titleKanji?: string
   author?: string
+  description?: string
   tagIds?: string[]
 }
 
