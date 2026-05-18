@@ -29,6 +29,7 @@ describe("ReadingSessionService (unit)", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    delete process.env.READING_SESSION_AUTOCLOSE_CAP_SECONDS;
     service = new ReadingSessionService(
       repo as any,
       progressRepo as any,
@@ -92,6 +93,30 @@ describe("ReadingSessionService (unit)", () => {
       expect.any(Number)
     );
     expect(result.id).toBe("new-session");
+  });
+
+  it("startSession() should cap stale auto-closed session duration", async () => {
+    const openSession = {
+      id: "stale-session",
+      userId: "user-1",
+      startedAt: new Date("2026-03-18T10:00:00Z"),
+    };
+
+    repo.findOpenSessionByUser.mockResolvedValue(openSession);
+    repo.create.mockResolvedValue({
+      id: "new-session",
+      userId: "user-1",
+      contentType: "MANGA",
+      contentId: "manga-1",
+    });
+
+    await service.startSession("user-1", "MANGA", "manga-1");
+
+    expect(repo.updateEnd).toHaveBeenCalledWith(
+      "stale-session",
+      new Date(openSession.startedAt.getTime() + 1800 * 1000),
+      1800
+    );
   });
 
   it("endSession() should throw when session not found", async () => {

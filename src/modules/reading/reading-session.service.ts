@@ -3,6 +3,17 @@ import { MangaProgressRepository } from "./manga-progress.repository.js";
 import { VolumeCompletionRepository } from "./volume-completion.repository.js";
 import { AppError } from "../../shared/errors/AppError.js";
 
+const DEFAULT_AUTO_CLOSED_SESSION_CAP_SECONDS = 30 * 60;
+
+function resolveAutoClosedSessionCapSeconds() {
+    const raw = process.env["READING_SESSION_AUTOCLOSE_CAP_SECONDS"];
+    const parsed = raw ? Number(raw) : NaN;
+    if (Number.isFinite(parsed) && parsed > 0) {
+        return Math.floor(parsed);
+    }
+    return DEFAULT_AUTO_CLOSED_SESSION_CAP_SECONDS;
+}
+
 export class ReadingSessionService {
     constructor(
         private repo: ReadingSessionRepository,
@@ -16,6 +27,7 @@ export class ReadingSessionService {
         contentId: string
     ) {
         const now = new Date();
+        const autoClosedSessionCapSeconds = resolveAutoClosedSessionCapSeconds();
 
         // A user can only have one active session at a time.
         // If an unclosed session exists (e.g. the client crashed without
@@ -26,12 +38,14 @@ export class ReadingSessionService {
         if (openSession) {
             // Convert millisecond difference to whole seconds.
             // Math.max guards against clock skew producing a negative value.
-            const durationSeconds = Math.max(
+            const elapsedSeconds = Math.max(
                 0,
                 Math.floor((now.getTime() - openSession.startedAt.getTime()) / 1000)
             );
+            const durationSeconds = Math.min(elapsedSeconds, autoClosedSessionCapSeconds);
+            const endedAt = new Date(openSession.startedAt.getTime() + durationSeconds * 1000);
 
-            await this.repo.updateEnd(openSession.id, now, durationSeconds);
+            await this.repo.updateEnd(openSession.id, endedAt, durationSeconds);
         }
 
         return this.repo.create({
