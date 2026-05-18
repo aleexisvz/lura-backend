@@ -10,6 +10,7 @@ export async function resetTestDatabase() {
       "Volume",
       "Book",
       "MangaProgress",
+      "VolumeCompletion",
       "ReadingSession",
       "Manga",
       "User"

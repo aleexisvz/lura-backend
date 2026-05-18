@@ -42,9 +42,9 @@ export class VolumeCompletionService {
         await this.repo.deactivateByUserAndVolume(userId, volumeId);
 
         // Accumulate current pages into historicalPagesRead and reset position to page 1
-        const progress = await this.progressRepo.findByUserAndManga(userId, mangaId);
-        if (progress && progress.volumeId === volumeId) {
-            await this.progressRepo.accumulateAndResetPage(progress.id, progress.page, volumeId);
+        const progress = await this.progressRepo.findByUserAndMangaAndVolume(userId, mangaId, volumeId);
+        if (progress) {
+            await this.progressRepo.accumulateAndResetPage(progress.id, progress.page);
         }
     }
 }

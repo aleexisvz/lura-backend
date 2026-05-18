@@ -2,12 +2,25 @@ import { prisma } from "../../infrastructure/database/prisma.js"
 
 export class MangaProgressRepository {
 
-    findByUserAndManga(userId: string, mangaId: string) {
+    findLatestByUserAndManga(userId: string, mangaId: string) {
+        return prisma.mangaProgress.findFirst({
+            where: {
+                userId,
+                mangaId,
+            },
+            orderBy: {
+                updatedAt: "desc",
+            },
+        })
+    }
+
+    findByUserAndMangaAndVolume(userId: string, mangaId: string, volumeId: string) {
         return prisma.mangaProgress.findUnique({
             where: {
-                userId_mangaId: {
+                userId_mangaId_volumeId: {
                     userId,
                     mangaId,
+                    volumeId,
                 },
             },
         })
@@ -32,17 +45,14 @@ export class MangaProgressRepository {
         })
     }
 
-    update(id: string, data: {
-        volumeId: string
-        page: number
-    }) {
+    update(id: string, data: { page: number }) {
         return prisma.mangaProgress.update({
             where: { id },
             data,
         })
     }
 
-    getContinueReading(userId: string, limit = 10, excludeVolumeIds: string[] = []) {
+    getContinueReading(userId: string, limit = 50, excludeVolumeIds: string[] = []) {
         return prisma.mangaProgress.findMany({
             where: {
                 userId,
@@ -55,6 +65,40 @@ export class MangaProgressRepository {
         })
     }
 
+    findMangasByIds(ids: string[]) {
+        return prisma.manga.findMany({
+            where: {
+                id: {
+                    in: ids,
+                },
+            },
+            select: {
+                id: true,
+                title: true,
+                coverPath: true,
+            },
+        })
+    }
+
+    findVolumesByIds(ids: string[]) {
+        return prisma.volume.findMany({
+            where: {
+                id: {
+                    in: ids,
+                },
+            },
+            select: {
+                id: true,
+                mangaId: true,
+                number: true,
+                title: true,
+                pagesCount: true,
+                status: true,
+                coverPath: true,
+            },
+        })
+    }
+
     sumPagesReadByUser(userId: string) {
         return prisma.mangaProgress.aggregate({
             where: { userId },
@@ -62,13 +106,12 @@ export class MangaProgressRepository {
         })
     }
 
-    accumulateAndResetPage(id: string, currentPage: number, volumeId: string) {
+    accumulateAndResetPage(id: string, currentPage: number) {
         return prisma.mangaProgress.update({
             where: { id },
             data: {
                 historicalPagesRead: { increment: currentPage },
                 page: 1,
-                volumeId,
             },
         })
     }

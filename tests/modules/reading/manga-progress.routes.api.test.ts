@@ -215,6 +215,82 @@ describe("MangaProgress routes (api)", () => {
     expect(body[0]).toMatchObject({ mangaId: manga.id });
   });
 
+  it("GET /users/me/continue-reading should keep multiple in-progress volumes of same manga", async () => {
+    const manga = await prisma.manga.create({
+      data: { title: "Blue Lock" },
+    });
+    const vol1 = await prisma.volume.create({
+      data: { mangaId: manga.id, number: 1, status: "READY", pagesCount: 30 },
+    });
+    const vol2 = await prisma.volume.create({
+      data: { mangaId: manga.id, number: 2, status: "READY", pagesCount: 30 },
+    });
+
+    await app.inject({
+      method: "POST",
+      url: `/manga/${manga.id}/progress`,
+      headers: buildAuthHeader(app, "USER"),
+      payload: { volumeId: vol1.id, page: 15 },
+    });
+
+    await app.inject({
+      method: "POST",
+      url: `/manga/${manga.id}/progress`,
+      headers: buildAuthHeader(app, "USER"),
+      payload: { volumeId: vol2.id, page: 20 },
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/users/me/continue-reading",
+      headers: buildAuthHeader(app, "USER"),
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body).toHaveLength(2);
+    expect(body[0]).toMatchObject({ volumeId: vol2.id });
+    expect(body[1]).toMatchObject({ volumeId: vol1.id });
+  });
+
+  it("GET /users/me/continue-reading should include early in-progress entries", async () => {
+    const manga = await prisma.manga.create({
+      data: { title: "Threshold Manga" },
+    });
+    const longVolume = await prisma.volume.create({
+      data: { mangaId: manga.id, number: 1, status: "READY", pagesCount: 40 },
+    });
+    const shortVolume = await prisma.volume.create({
+      data: { mangaId: manga.id, number: 2, status: "READY", pagesCount: 12 },
+    });
+
+    await app.inject({
+      method: "POST",
+      url: `/manga/${manga.id}/progress`,
+      headers: buildAuthHeader(app, "USER"),
+      payload: { volumeId: longVolume.id, page: 14 },
+    });
+
+    await app.inject({
+      method: "POST",
+      url: `/manga/${manga.id}/progress`,
+      headers: buildAuthHeader(app, "USER"),
+      payload: { volumeId: shortVolume.id, page: 1 },
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/users/me/continue-reading",
+      headers: buildAuthHeader(app, "USER"),
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body).toHaveLength(2);
+    expect(body[0]).toMatchObject({ volumeId: shortVolume.id });
+    expect(body[1]).toMatchObject({ volumeId: longVolume.id });
+  });
+
   it("GET /manga/:mangaId/progress should require auth", async () => {
     const response = await app.inject({
       method: "GET",

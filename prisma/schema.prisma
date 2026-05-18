@@ -43,6 +43,7 @@ model Manga {
 
   volumes   Volume[]
   mangaTags MangaTag[]
+  mangaProgress MangaProgress[]
 
   createdAt DateTime @default(now())
 }
@@ -114,6 +115,7 @@ model Volume {
 
   pages             Page[]
   volumeCompletions VolumeCompletion[]
+  mangaProgress     MangaProgress[]
 
   createdAt  DateTime @default(now())
 
@@ -149,9 +151,12 @@ model MangaProgress {
   updatedAt DateTime @updatedAt
   
   User   User   @relation(fields: [userId], references: [id])
+  Manga  Manga  @relation(fields: [mangaId], references: [id])
+  Volume Volume @relation(fields: [volumeId], references: [id])
   
-  @@unique([userId, mangaId])
+  @@unique([userId, mangaId, volumeId])
   @@index([userId])
+  @@index([userId, updatedAt])
 }
 
 model ReadingSession {

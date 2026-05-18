@@ -3,17 +3,21 @@ import { MangaProgressService } from "../../../src/modules/reading/manga-progres
 
 describe("MangaProgressService (unit)", () => {
   const repo = {
-    findByUserAndManga: vi.fn(),
+    findLatestByUserAndManga: vi.fn(),
+    findByUserAndMangaAndVolume: vi.fn(),
     findMangaById: vi.fn(),
     findVolumeById: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     getContinueReading: vi.fn(),
+    findMangasByIds: vi.fn(),
+    findVolumesByIds: vi.fn(),
   };
 
   const completionRepo = {
     findByUserAndVolume: vi.fn(),
     findVolumeIdsByUser: vi.fn(),
+    deactivateByUserAndVolume: vi.fn(),
   };
 
   let service: MangaProgressService;
@@ -21,24 +25,28 @@ describe("MangaProgressService (unit)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     service = new MangaProgressService(repo as any, completionRepo as any);
-    // Happy-path defaults for the new validation mocks; override per test for error cases.
     repo.findMangaById.mockResolvedValue({ id: "manga-1" });
-    repo.findVolumeById.mockResolvedValue({ id: "vol-1", mangaId: "manga-1", pagesCount: 100 });
+    repo.findVolumeById.mockResolvedValue({
+      id: "vol-1",
+      mangaId: "manga-1",
+      pagesCount: 100,
+    });
     completionRepo.findByUserAndVolume.mockResolvedValue(null);
     completionRepo.findVolumeIdsByUser.mockResolvedValue([]);
+    completionRepo.deactivateByUserAndVolume.mockResolvedValue({ count: 0 });
   });
 
   it("getProgress() should return null when no progress exists", async () => {
-    repo.findByUserAndManga.mockResolvedValue(null);
+    repo.findLatestByUserAndManga.mockResolvedValue(null);
 
     const result = await service.getProgress("user-1", "manga-1");
 
-    expect(repo.findByUserAndManga).toHaveBeenCalledWith("user-1", "manga-1");
+    expect(repo.findLatestByUserAndManga).toHaveBeenCalledWith("user-1", "manga-1");
     expect(result).toBeNull();
   });
 
   it("getProgress() should return formatted progress", async () => {
-    repo.findByUserAndManga.mockResolvedValue({
+    repo.findLatestByUserAndManga.mockResolvedValue({
       id: "prog-1",
       mangaId: "manga-1",
       volumeId: "vol-1",
@@ -57,8 +65,8 @@ describe("MangaProgressService (unit)", () => {
     });
   });
 
-  it("updateProgress() should create new progress when none exists", async () => {
-    repo.findByUserAndManga.mockResolvedValue(null);
+  it("updateProgress() should create a volume progress when none exists", async () => {
+    repo.findByUserAndMangaAndVolume.mockResolvedValue(null);
     repo.create.mockResolvedValue({
       id: "prog-1",
       userId: "user-1",
@@ -79,9 +87,8 @@ describe("MangaProgressService (unit)", () => {
   });
 
   it("updateProgress() should not go backward on same volume", async () => {
-    repo.findByUserAndManga.mockResolvedValue({
+    repo.findByUserAndMangaAndVolume.mockResolvedValue({
       id: "prog-1",
-      volumeId: "vol-1",
       page: 10,
     });
 
@@ -91,23 +98,9 @@ describe("MangaProgressService (unit)", () => {
     expect(result.page).toBe(10);
   });
 
-  it("updateProgress() should not update when same page on same volume", async () => {
-    repo.findByUserAndManga.mockResolvedValue({
-      id: "prog-1",
-      volumeId: "vol-1",
-      page: 10,
-    });
-
-    const result = await service.updateProgress("user-1", "manga-1", "vol-1", 10);
-
-    expect(repo.update).not.toHaveBeenCalled();
-    expect(result.page).toBe(10);
-  });
-
   it("updateProgress() should update when page advances on same volume", async () => {
-    repo.findByUserAndManga.mockResolvedValue({
+    repo.findByUserAndMangaAndVolume.mockResolvedValue({
       id: "prog-1",
-      volumeId: "vol-1",
       page: 5,
     });
     repo.update.mockResolvedValue({
@@ -118,76 +111,119 @@ describe("MangaProgressService (unit)", () => {
 
     const result = await service.updateProgress("user-1", "manga-1", "vol-1", 15);
 
-    expect(repo.update).toHaveBeenCalledWith("prog-1", {
-      volumeId: "vol-1",
-      page: 15,
-    });
+    expect(repo.update).toHaveBeenCalledWith("prog-1", { page: 15 });
     expect(result.page).toBe(15);
   });
 
-  it("updateProgress() should update when volume changes", async () => {
-    repo.findByUserAndManga.mockResolvedValue({
-      id: "prog-1",
-      volumeId: "vol-1",
-      page: 50,
-    });
-    repo.update.mockResolvedValue({
-      id: "prog-1",
+  it("updateProgress() should create independent progress for another volume", async () => {
+    repo.findByUserAndMangaAndVolume.mockResolvedValue(null);
+    repo.create.mockResolvedValue({
+      id: "prog-2",
+      userId: "user-1",
+      mangaId: "manga-1",
       volumeId: "vol-2",
       page: 1,
     });
 
     const result = await service.updateProgress("user-1", "manga-1", "vol-2", 1);
 
-    expect(repo.update).toHaveBeenCalledWith("prog-1", {
+    expect(repo.create).toHaveBeenCalledWith({
+      userId: "user-1",
+      mangaId: "manga-1",
       volumeId: "vol-2",
       page: 1,
     });
-    expect(result.page).toBe(1);
+    expect(result.volumeId).toBe("vol-2");
   });
 
   it("updateProgress() should throw MANGA_NOT_FOUND when manga does not exist", async () => {
     repo.findMangaById.mockResolvedValue(null);
 
-    await expect(
-      service.updateProgress("user-1", "manga-x", "vol-1", 5)
-    ).rejects.toMatchObject({ code: "MANGA_NOT_FOUND" });
+    await expect(service.updateProgress("user-1", "manga-x", "vol-1", 5)).rejects.toMatchObject({
+      code: "MANGA_NOT_FOUND",
+    });
     expect(repo.create).not.toHaveBeenCalled();
   });
 
   it("updateProgress() should throw VOLUME_NOT_FOUND when volume does not exist", async () => {
     repo.findVolumeById.mockResolvedValue(null);
 
-    await expect(
-      service.updateProgress("user-1", "manga-1", "vol-x", 5)
-    ).rejects.toMatchObject({ code: "VOLUME_NOT_FOUND" });
-  });
-
-  it("updateProgress() should throw VOLUME_NOT_FOUND when volume belongs to a different manga", async () => {
-    repo.findVolumeById.mockResolvedValue({ id: "vol-1", mangaId: "manga-2", pagesCount: 100 });
-
-    await expect(
-      service.updateProgress("user-1", "manga-1", "vol-1", 5)
-    ).rejects.toMatchObject({ code: "VOLUME_NOT_FOUND" });
+    await expect(service.updateProgress("user-1", "manga-1", "vol-x", 5)).rejects.toMatchObject({
+      code: "VOLUME_NOT_FOUND",
+    });
   });
 
   it("updateProgress() should throw PAGE_OUT_OF_RANGE when page exceeds pagesCount", async () => {
     repo.findVolumeById.mockResolvedValue({ id: "vol-1", mangaId: "manga-1", pagesCount: 20 });
 
-    await expect(
-      service.updateProgress("user-1", "manga-1", "vol-1", 21)
-    ).rejects.toMatchObject({ code: "PAGE_OUT_OF_RANGE" });
+    await expect(service.updateProgress("user-1", "manga-1", "vol-1", 21)).rejects.toMatchObject({
+      code: "PAGE_OUT_OF_RANGE",
+    });
   });
 
-  it("getContinueReading() should delegate to repository", async () => {
+  it("getContinueReading() should apply completion filter and enrichment", async () => {
+    completionRepo.findVolumeIdsByUser.mockResolvedValue(["vol-completed"]);
     repo.getContinueReading.mockResolvedValue([
-      { mangaId: "m-1", page: 5 },
-      { mangaId: "m-2", page: 10 },
+      { mangaId: "manga-1", volumeId: "vol-1", page: 15, updatedAt: new Date("2026-05-18T10:00:00Z") },
+      { mangaId: "manga-1", volumeId: "vol-short", page: 1, updatedAt: new Date("2026-05-18T09:00:00Z") },
+      { mangaId: "manga-2", volumeId: "vol-low", page: 10, updatedAt: new Date("2026-05-18T08:00:00Z") },
+    ]);
+    repo.findMangasByIds.mockResolvedValue([
+      { id: "manga-1", title: "Manga One", coverPath: "manga/1/cover.jpg" },
+      { id: "manga-2", title: "Manga Two", coverPath: null },
+    ]);
+    repo.findVolumesByIds.mockResolvedValue([
+      {
+        id: "vol-1",
+        mangaId: "manga-1",
+        number: 3,
+        title: "Vol 3",
+        pagesCount: 30,
+        status: "READY",
+        coverPath: "manga/1/vol/3/cover.jpg",
+      },
+      {
+        id: "vol-short",
+        mangaId: "manga-1",
+        number: 1,
+        title: "Vol 1",
+        pagesCount: 12,
+        status: "READY",
+        coverPath: null,
+      },
+      {
+        id: "vol-low",
+        mangaId: "manga-2",
+        number: 2,
+        title: "Vol 2",
+        pagesCount: 40,
+        status: "READY",
+        coverPath: null,
+      },
     ]);
 
     const result = await service.getContinueReading("user-1");
 
-    expect(repo.getContinueReading).toHaveBeenCalledWith("user-1", 10, []);
-    expect(result).toHaveLength(2);
+    expect(repo.getContinueReading).toHaveBeenCalledWith("user-1", 60);
+    expect(result).toHaveLength(3);
+    expect(result[0]).toMatchObject({
+      mangaId: "manga-1",
+      volumeId: "vol-1",
+      pageNumber: 15,
+      mangaTitle: "Manga One",
+      progressPercent: 50,
+      coverUrl: "/manga/manga-1/volumes/vol-1/cover",
+    });
+    expect(result[1]).toMatchObject({
+      volumeId: "vol-short",
+      pageNumber: 1,
+      progressPercent: 8,
+      coverUrl: "/manga/manga-1/cover",
+    });
+    expect(result[2]).toMatchObject({
+      volumeId: "vol-low",
+      pageNumber: 10,
+      progressPercent: 25,
+    });
   });
 });

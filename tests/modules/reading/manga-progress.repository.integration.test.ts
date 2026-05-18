@@ -29,77 +29,120 @@ describe("MangaProgressRepository (integration)", () => {
         await disconnectTestDatabase();
     });
 
-    it("findByUserAndManga() should return null when no progress exists", async () => {
-        const result = await repo.findByUserAndManga(userId, mangaId);
+    it("findLatestByUserAndManga() should return null when no progress exists", async () => {
+        const result = await repo.findLatestByUserAndManga(userId, mangaId);
 
         expect(result).toBeNull();
     });
 
     it("create() should persist progress and return it", async () => {
+        const volume = await prisma.volume.create({
+            data: { mangaId, number: 1, status: "READY", pagesCount: 30 },
+        });
+
         const progress = await repo.create({
             userId,
             mangaId,
-            volumeId: "volume-1",
+            volumeId: volume.id,
             page: 5,
         });
 
         expect(progress).toMatchObject({
             userId,
             mangaId,
-            volumeId: "volume-1",
+            volumeId: volume.id,
             page: 5,
         });
         expect(progress.id).toEqual(expect.any(String));
     });
 
-    it("findByUserAndManga() should return existing progress", async () => {
+    it("findByUserAndMangaAndVolume() should return existing progress", async () => {
+        const volume = await prisma.volume.create({
+            data: { mangaId, number: 1, status: "READY", pagesCount: 30 },
+        });
+
         await repo.create({
             userId,
             mangaId,
-            volumeId: "volume-1",
+            volumeId: volume.id,
             page: 10,
         });
 
-        const found = await repo.findByUserAndManga(userId, mangaId);
+        const found = await repo.findByUserAndMangaAndVolume(userId, mangaId, volume.id);
 
         expect(found).toBeTruthy();
         expect(found?.page).toBe(10);
-        expect(found?.volumeId).toBe("volume-1");
+        expect(found?.volumeId).toBe(volume.id);
     });
 
-    it("update() should update volumeId and page", async () => {
+    it("update() should update page", async () => {
+        const volume = await prisma.volume.create({
+            data: { mangaId, number: 1, status: "READY", pagesCount: 30 },
+        });
+
         const created = await repo.create({
             userId,
             mangaId,
-            volumeId: "volume-1",
+            volumeId: volume.id,
             page: 3,
         });
 
         const updated = await repo.update(created.id, {
-            volumeId: "volume-2",
-            page: 1,
+            page: 7,
         });
 
-        expect(updated.volumeId).toBe("volume-2");
-        expect(updated.page).toBe(1);
+        expect(updated.volumeId).toBe(volume.id);
+        expect(updated.page).toBe(7);
+    });
+
+    it("findLatestByUserAndManga() should return most recently updated progress", async () => {
+        const volume1 = await prisma.volume.create({
+            data: { mangaId, number: 1, status: "READY", pagesCount: 30 },
+        });
+        const volume2 = await prisma.volume.create({
+            data: { mangaId, number: 2, status: "READY", pagesCount: 30 },
+        });
+
+        await repo.create({
+            userId,
+            mangaId,
+            volumeId: volume1.id,
+            page: 4,
+        });
+
+        await repo.create({
+            userId,
+            mangaId,
+            volumeId: volume2.id,
+            page: 9,
+        });
+
+        const latest = await repo.findLatestByUserAndManga(userId, mangaId);
+        expect(latest?.volumeId).toBe(volume2.id);
     });
 
     it("getContinueReading() should return progress ordered by updatedAt desc", async () => {
         const manga2 = await prisma.manga.create({
             data: { title: "Second Manga" },
         });
+        const volume1 = await prisma.volume.create({
+            data: { mangaId, number: 1, status: "READY", pagesCount: 30 },
+        });
+        const volume2 = await prisma.volume.create({
+            data: { mangaId: manga2.id, number: 1, status: "READY", pagesCount: 30 },
+        });
 
         await repo.create({
             userId,
             mangaId,
-            volumeId: "v-1",
+            volumeId: volume1.id,
             page: 1,
         });
 
         await repo.create({
             userId,
             mangaId: manga2.id,
-            volumeId: "v-2",
+            volumeId: volume2.id,
             page: 5,
         });
 
