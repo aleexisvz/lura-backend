@@ -13,7 +13,9 @@
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "reading:xp:backfill": "tsx scripts/backfill-reading-xp.ts"
+    "reading:xp:backfill": "tsx scripts/backfill-reading-xp.ts",
+    "images:pages:backfill": "tsx scripts/backfill-pages-webp.ts",
+    "images:covers:backfill": "tsx scripts/backfill-covers-webp.ts"
   },
   "keywords": [],
   "author": "",
@@ -30,6 +32,7 @@
     "fastify": "^5.7.4",
     "pg": "^8.19.0",
     "prisma": "^7.4.2",
+    "sharp": "^0.34.5",
     "zod": "^4.3.6"
   },
   "devDependencies": {
