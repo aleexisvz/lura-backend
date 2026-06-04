@@ -1,6 +1,7 @@
 import { ReadingSessionRepository } from "./reading-session.repository.js";
 import { MangaProgressRepository } from "./manga-progress.repository.js";
 import { VolumeCompletionRepository } from "./volume-completion.repository.js";
+import { buildReadingLevelSnapshot, calculateSessionXp } from "./reading-xp.js";
 import { AppError } from "../../shared/errors/AppError.js";
 
 const DEFAULT_AUTO_CLOSED_SESSION_CAP_SECONDS = 30 * 60;
@@ -44,8 +45,15 @@ export class ReadingSessionService {
             );
             const durationSeconds = Math.min(elapsedSeconds, autoClosedSessionCapSeconds);
             const endedAt = new Date(openSession.startedAt.getTime() + durationSeconds * 1000);
+            const xpAwarded = calculateSessionXp(durationSeconds);
 
-            await this.repo.updateEnd(openSession.id, endedAt, durationSeconds);
+            await this.repo.closeWithAward({
+                sessionId: openSession.id,
+                userId,
+                endedAt,
+                durationSeconds,
+                xpAwarded,
+            });
         }
 
         return this.repo.create({
@@ -87,8 +95,15 @@ export class ReadingSessionService {
             0,
             Math.floor((now.getTime() - session.startedAt.getTime()) / 1000)
         );
+        const xpAwarded = calculateSessionXp(durationSeconds);
 
-        return this.repo.updateEnd(session.id, now, durationSeconds);
+        return this.repo.closeWithAward({
+            sessionId: session.id,
+            userId,
+            endedAt: now,
+            durationSeconds,
+            xpAwarded,
+        });
     }
 
     async getUserReadingStats(userId: string) {
@@ -103,6 +118,7 @@ export class ReadingSessionService {
             totalMangasRead,
             totalSeriesRead,
             totalBooksRead,
+            readingXpTotal,
         ] = await Promise.all([
             this.repo.getTotalReadingTimeByUser(userId),
             this.repo.getTotalReadingTimeByUserAndType(userId, "MANGA"),
@@ -113,9 +129,11 @@ export class ReadingSessionService {
             this.completionRepo.countCompletedMangasByUser(userId),
             this.repo.countDistinctCompletedSeriesByUser(userId),
             this.repo.countDistinctCompletedBooksByUser(userId),
+            this.repo.getUserReadingXpTotal(userId),
         ]);
 
         const totalSeconds = total._sum.durationSeconds ?? 0;
+        const levelSnapshot = buildReadingLevelSnapshot(readingXpTotal);
 
         return {
             totalSessions,
@@ -128,6 +146,11 @@ export class ReadingSessionService {
             totalMangasRead,
             totalSeriesRead,
             totalBooksRead,
+            readingLevel: levelSnapshot.readingLevel,
+            readingXpTotal: levelSnapshot.readingXpTotal,
+            xpInLevel: levelSnapshot.xpInLevel,
+            xpToNextLevel: levelSnapshot.xpToNextLevel,
+            xpProgressPercent: levelSnapshot.xpProgressPercent,
         };
     }
 

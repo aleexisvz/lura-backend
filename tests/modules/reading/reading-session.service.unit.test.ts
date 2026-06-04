@@ -7,6 +7,7 @@ describe("ReadingSessionService (unit)", () => {
     create: vi.fn(),
     findById: vi.fn(),
     updateEnd: vi.fn(),
+    closeWithAward: vi.fn(),
     getTotalReadingTimeByUser: vi.fn(),
     getTotalReadingTimeByUserAndType: vi.fn(),
     countCompletedByUser: vi.fn(),
@@ -14,6 +15,7 @@ describe("ReadingSessionService (unit)", () => {
     countDistinctCompletedBooksByUser: vi.fn(),
     findRecentMangaSeriesByUser: vi.fn(),
     findRecentBookSeriesByUser: vi.fn(),
+    getUserReadingXpTotal: vi.fn(),
   };
 
   const progressRepo = {
@@ -45,6 +47,7 @@ describe("ReadingSessionService (unit)", () => {
     repo.countDistinctCompletedBooksByUser.mockResolvedValue(0);
     repo.findRecentMangaSeriesByUser.mockResolvedValue([]);
     repo.findRecentBookSeriesByUser.mockResolvedValue([]);
+    repo.getUserReadingXpTotal.mockResolvedValue(0);
   });
 
   it("startSession() should create new session when no open session", async () => {
@@ -59,7 +62,7 @@ describe("ReadingSessionService (unit)", () => {
     const result = await service.startSession("user-1", "MANGA", "manga-1");
 
     expect(repo.findOpenSessionByUser).toHaveBeenCalledWith("user-1");
-    expect(repo.updateEnd).not.toHaveBeenCalled();
+    expect(repo.closeWithAward).not.toHaveBeenCalled();
     expect(repo.create).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: "user-1",
@@ -87,10 +90,13 @@ describe("ReadingSessionService (unit)", () => {
 
     const result = await service.startSession("user-1", "BOOK", "book-1");
 
-    expect(repo.updateEnd).toHaveBeenCalledWith(
-      "old-session",
-      expect.any(Date),
-      expect.any(Number)
+    expect(repo.closeWithAward).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: "old-session",
+        userId: "user-1",
+        durationSeconds: expect.any(Number),
+        xpAwarded: expect.any(Number),
+      })
     );
     expect(result.id).toBe("new-session");
   });
@@ -112,11 +118,13 @@ describe("ReadingSessionService (unit)", () => {
 
     await service.startSession("user-1", "MANGA", "manga-1");
 
-    expect(repo.updateEnd).toHaveBeenCalledWith(
-      "stale-session",
-      new Date(openSession.startedAt.getTime() + 1800 * 1000),
-      1800
-    );
+    expect(repo.closeWithAward).toHaveBeenCalledWith({
+      sessionId: "stale-session",
+      userId: "user-1",
+      endedAt: new Date(openSession.startedAt.getTime() + 1800 * 1000),
+      durationSeconds: 1800,
+      xpAwarded: 30,
+    });
   });
 
   it("endSession() should throw when session not found", async () => {
@@ -150,7 +158,7 @@ describe("ReadingSessionService (unit)", () => {
 
     const result = await service.endSession("user-1", "session-1");
 
-    expect(repo.updateEnd).not.toHaveBeenCalled();
+    expect(repo.closeWithAward).not.toHaveBeenCalled();
     expect(result).toBe(endedSession);
   });
 
@@ -161,18 +169,47 @@ describe("ReadingSessionService (unit)", () => {
       startedAt: new Date("2026-03-18T10:00:00Z"),
       endedAt: null,
     });
-    repo.updateEnd.mockResolvedValue({
+    repo.closeWithAward.mockResolvedValue({
       id: "session-1",
       endedAt: expect.any(Date),
       durationSeconds: expect.any(Number),
+      xpAwarded: expect.any(Number),
     });
 
     await service.endSession("user-1", "session-1");
 
-    expect(repo.updateEnd).toHaveBeenCalledWith(
-      "session-1",
-      expect.any(Date),
-      expect.any(Number)
+    expect(repo.closeWithAward).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: "session-1",
+        userId: "user-1",
+        durationSeconds: expect.any(Number),
+        xpAwarded: expect.any(Number),
+      })
+    );
+  });
+
+  it("endSession() should compute XP with minute floor and session cap", async () => {
+    repo.findById.mockResolvedValue({
+      id: "session-1",
+      userId: "user-1",
+      startedAt: new Date("2026-03-18T10:00:00Z"),
+      endedAt: null,
+    });
+
+    repo.closeWithAward.mockResolvedValue({
+      id: "session-1",
+      endedAt: new Date(),
+      durationSeconds: expect.any(Number),
+      xpAwarded: 30,
+    });
+
+    await service.endSession("user-1", "session-1");
+
+    expect(repo.closeWithAward).toHaveBeenCalledWith(
+      expect.objectContaining({
+        durationSeconds: expect.any(Number),
+        xpAwarded: 30,
+      })
     );
   });
 
@@ -192,6 +229,7 @@ describe("ReadingSessionService (unit)", () => {
     completionRepo.countCompletedMangasByUser.mockResolvedValue(2);
     repo.countDistinctCompletedSeriesByUser.mockResolvedValue(4);
     repo.countDistinctCompletedBooksByUser.mockResolvedValue(2);
+    repo.getUserReadingXpTotal.mockResolvedValue(95);
 
     const result = await service.getUserReadingStats("user-1");
 
@@ -206,6 +244,11 @@ describe("ReadingSessionService (unit)", () => {
       totalMangasRead: 2,
       totalSeriesRead: 4,
       totalBooksRead: 2,
+      readingLevel: 4,
+      readingXpTotal: 95,
+      xpInLevel: 5,
+      xpToNextLevel: 50,
+      xpProgressPercent: 10,
     });
   });
 
@@ -224,6 +267,7 @@ describe("ReadingSessionService (unit)", () => {
     completionRepo.countCompletedMangasByUser.mockResolvedValue(0);
     repo.countDistinctCompletedSeriesByUser.mockResolvedValue(0);
     repo.countDistinctCompletedBooksByUser.mockResolvedValue(0);
+    repo.getUserReadingXpTotal.mockResolvedValue(0);
 
     const result = await service.getUserReadingStats("user-1");
 
@@ -238,6 +282,11 @@ describe("ReadingSessionService (unit)", () => {
       totalMangasRead: 0,
       totalSeriesRead: 0,
       totalBooksRead: 0,
+      readingLevel: 1,
+      readingXpTotal: 0,
+      xpInLevel: 0,
+      xpToNextLevel: 20,
+      xpProgressPercent: 0,
     });
   });
 

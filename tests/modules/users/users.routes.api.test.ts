@@ -59,6 +59,8 @@ describe("Users routes (api)", () => {
         role: "USER",
         createdAt: expect.any(String),
         profileImageUrl: null,
+        readingXpTotal: 0,
+        readingLevel: 1,
       })
     );
   });

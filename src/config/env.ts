@@ -16,6 +16,9 @@ const EnvSchema = z.object({
   // Accepts any value understood by the jsonwebtoken "expiresIn" option.
   // Examples: "15m", "1h", "7d".
   JWT_EXPIRES_IN: z.string().default("15m"),
+
+  READING_XP_PER_MINUTE: z.coerce.number().int().positive().default(1),
+  READING_XP_SESSION_CAP_SECONDS: z.coerce.number().int().positive().default(1800),
 });
 
 export const env = EnvSchema.parse(process.env);

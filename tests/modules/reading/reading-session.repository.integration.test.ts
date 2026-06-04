@@ -95,6 +95,36 @@ describe("ReadingSessionRepository (integration)", () => {
     expect(updated.durationSeconds).toBe(1800);
   });
 
+  it("closeWithAward() should close session and increment user XP atomically", async () => {
+    const startedAt = new Date("2026-03-18T10:00:00Z");
+    const endedAt = new Date("2026-03-18T10:20:00Z");
+
+    const session = await repo.create({
+      userId,
+      contentType: "MANGA",
+      contentId: "manga-1",
+      startedAt,
+    });
+
+    const updated = await repo.closeWithAward({
+      sessionId: session.id,
+      userId,
+      endedAt,
+      durationSeconds: 1200,
+      xpAwarded: 20,
+    });
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { readingXpTotal: true },
+    });
+
+    expect(updated.endedAt).toEqual(endedAt);
+    expect(updated.durationSeconds).toBe(1200);
+    expect(updated.xpAwarded).toBe(20);
+    expect(user?.readingXpTotal).toBe(20);
+  });
+
   it("findOpenSessionByUser() should not return closed sessions", async () => {
     const session = await repo.create({
       userId,

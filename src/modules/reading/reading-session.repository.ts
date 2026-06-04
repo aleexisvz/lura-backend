@@ -47,6 +47,40 @@ export class ReadingSessionRepository {
         });
     }
 
+    closeWithAward(input: {
+        sessionId: string;
+        userId: string;
+        endedAt: Date;
+        durationSeconds: number;
+        xpAwarded: number;
+    }) {
+        const { sessionId, userId, endedAt, durationSeconds, xpAwarded } = input;
+
+        return prisma.$transaction(async (tx) => {
+            const updatedSession = await tx.readingSession.update({
+                where: { id: sessionId },
+                data: {
+                    endedAt,
+                    durationSeconds,
+                    xpAwarded,
+                },
+            });
+
+            if (xpAwarded > 0) {
+                await tx.user.update({
+                    where: { id: userId },
+                    data: {
+                        readingXpTotal: {
+                            increment: xpAwarded,
+                        },
+                    },
+                });
+            }
+
+            return updatedSession;
+        });
+    }
+
     getTotalReadingTimeByUser(userId: string) {
         return prisma.readingSession.aggregate({
             where: {
@@ -57,6 +91,17 @@ export class ReadingSessionRepository {
                 durationSeconds: true,
             },
         });
+    }
+
+    async getUserReadingXpTotal(userId: string) {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                readingXpTotal: true,
+            },
+        });
+
+        return user?.readingXpTotal ?? 0;
     }
 
     getTotalReadingTimeByUserAndType(

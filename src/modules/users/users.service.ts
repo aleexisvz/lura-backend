@@ -3,6 +3,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { LocalStorageService } from "../../infrastructure/storage/LocalStorageService.js";
 import { badRequest, notFound } from "../../shared/errors/error-factory.js";
 import { getImageContentType } from "../../shared/utils/get-image-content-type.js";
+import { buildReadingLevelSnapshot } from "../reading/reading-xp.js";
 import { UsersRepository } from "./users.repository.js";
 import type { PublicUserDTO } from "./users.types.js";
 
@@ -118,7 +119,10 @@ export class UsersService {
     role: "USER" | "ADMIN";
     createdAt: Date;
     profileImagePath: string | null;
+    readingXpTotal: number;
   }): PublicUserDTO {
+    const levelSnapshot = buildReadingLevelSnapshot(user.readingXpTotal);
+
     return {
       id: user.id,
       email: user.email,
@@ -126,6 +130,8 @@ export class UsersService {
       role: user.role,
       createdAt: user.createdAt,
       profileImageUrl: user.profileImagePath ? "/users/me/profile-image" : null,
+      readingXpTotal: levelSnapshot.readingXpTotal,
+      readingLevel: levelSnapshot.readingLevel,
     };
   }
 }

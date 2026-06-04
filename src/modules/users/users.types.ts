@@ -7,4 +7,6 @@ export type PublicUserDTO = {
   role: Role;
   createdAt: Date;
   profileImageUrl: string | null;
+  readingXpTotal: number;
+  readingLevel: number;
 };

@@ -12,7 +12,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:migrate": "prisma migrate dev",
+    "reading:xp:backfill": "tsx scripts/backfill-reading-xp.ts"
   },
   "keywords": [],
   "author": "",

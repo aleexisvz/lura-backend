@@ -11,6 +11,7 @@ export class UsersRepository {
         role: true,
         createdAt: true,
         profileImagePath: true,
+        readingXpTotal: true,
       },
     });
   }
@@ -26,6 +27,7 @@ export class UsersRepository {
         role: true,
         createdAt: true,
         profileImagePath: true,
+        readingXpTotal: true,
       },
     });
   }

@@ -146,6 +146,11 @@ describe("ReadingSession routes (api)", () => {
       totalMangasRead: 0,
       totalSeriesRead: 0,
       totalBooksRead: 0,
+      readingLevel: 1,
+      readingXpTotal: 0,
+      xpInLevel: 0,
+      xpToNextLevel: 20,
+      xpProgressPercent: 0,
     });
   });
 
@@ -177,6 +182,11 @@ describe("ReadingSession routes (api)", () => {
     expect(stats.totalMangasRead).toBeGreaterThanOrEqual(0);
     expect(stats.totalSeriesRead).toBeGreaterThanOrEqual(0);
     expect(stats.totalBooksRead).toBeGreaterThanOrEqual(0);
+    expect(stats.readingLevel).toBeGreaterThanOrEqual(1);
+    expect(stats.readingXpTotal).toBeGreaterThanOrEqual(0);
+    expect(stats.xpInLevel).toBeGreaterThanOrEqual(0);
+    expect(stats.xpToNextLevel).toBeGreaterThan(0);
+    expect(stats.xpProgressPercent).toBeGreaterThanOrEqual(0);
   });
 
   it("GET /users/me/recent-series should return separated recent manga and books", async () => {
