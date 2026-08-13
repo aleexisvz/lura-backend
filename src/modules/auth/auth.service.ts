@@ -32,7 +32,7 @@ export class AuthService {
     // Salt rounds = 10 is the bcrypt default and a good balance between
     // security and performance (~100ms on modern hardware).
     const passwordHash = await bcrypt.hash(dto.password, 10);
-    const user = await this.repo.createUser(email, username, passwordHash);
+    const user = await this.repo.createUser(email, username, passwordHash, dto.role);
 
     // JWT payload: { email, role } are custom claims; sub (subject) = userId
     // follows the JWT standard and is used to identify the user on each request.

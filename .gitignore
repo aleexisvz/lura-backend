@@ -1,14 +1,54 @@
-# Ignore storage directory
-storage/
-node_modules
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# Build and Compilation
 dist/
+build/
+out/
 
-# Keep environment variables out of version control
+# Testing
+/coverage/
+
+# Environment variables
 .env
+.env.*.local
+.env.local
 
-# Skills and agents data
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Prisma
+/generated/prisma
+
+# App specific / User files
+storage/
+uploads/
+downloads/
+/Markdown
+
+# Downloaded files & archives
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+*.iso
+
+# Antigravity/Agent config
 .agents/
 
-# Ignore generated Prisma client
-/generated/prisma
-/Markdown
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj

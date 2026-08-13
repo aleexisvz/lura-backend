@@ -9,9 +9,9 @@ export class AuthRepository {
     return prisma.user.findUnique({ where: { username } });
   }
 
-  async createUser(email: string, username: string, passwordHash: string) {
+  async createUser(email: string, username: string, passwordHash: string, role?: "USER" | "ADMIN") {
     return prisma.user.create({
-      data: { email, username, password: passwordHash },
+      data: { email, username, password: passwordHash, role },
       select: { id: true, email: true, username: true, role: true },
     });
   }

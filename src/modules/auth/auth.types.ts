@@ -1,4 +1,4 @@
-export type RegisterDTO = { email: string; username: string; password: string };
+export type RegisterDTO = { email: string; username: string; password: string; role?: "USER" | "ADMIN" };
 export type LoginDTO = { email: string; password: string };
 
 export type AuthResponseDTO = {

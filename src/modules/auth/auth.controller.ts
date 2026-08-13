@@ -11,6 +11,7 @@ const RegisterSchema = z.object({
     .max(32)
     .regex(/^[a-zA-Z0-9_]+$/),
   password: z.string().min(6),
+  role: z.enum(["USER", "ADMIN"]).optional(),
 });
 
 const LoginSchema = z.object({
