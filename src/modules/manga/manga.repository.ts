@@ -36,6 +36,7 @@ export class MangaRepository {
     author?: string;
     description?: string;
     tagIds?: string[];
+    status?: "EN_EMISION" | "FINALIZADO";
   }) {
     return prisma.manga.create({
       data: {
@@ -43,6 +44,7 @@ export class MangaRepository {
         ...(data.titleKanji !== undefined ? { titleKanji: data.titleKanji } : {}),
         ...(data.author !== undefined ? { author: data.author } : {}),
         ...(data.description !== undefined ? { description: data.description } : {}),
+        ...(data.status !== undefined ? { status: data.status } : {}),
         ...(data.tagIds !== undefined
           ? {
               mangaTags: {
@@ -66,6 +68,7 @@ export class MangaRepository {
         ...(data.titleKanji !== undefined ? { titleKanji: data.titleKanji } : {}),
         ...(data.author !== undefined ? { author: data.author } : {}),
         ...(data.description !== undefined ? { description: data.description } : {}),
+        ...(data.status !== undefined ? { status: data.status } : {}),
         ...(data.tagIds !== undefined
           ? {
               mangaTags: {

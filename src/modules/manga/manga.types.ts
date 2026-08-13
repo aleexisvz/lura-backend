@@ -4,6 +4,7 @@ export type CreateMangaDTO = {
   author?: string
   description?: string
   tagIds?: string[]
+  status?: "EN_EMISION" | "FINALIZADO"
 }
 
 export type UpdateMangaDTO = {
@@ -12,6 +13,7 @@ export type UpdateMangaDTO = {
   author?: string
   description?: string
   tagIds?: string[]
+  status?: "EN_EMISION" | "FINALIZADO"
 }
 
 export type CreateVolumeDTO = {

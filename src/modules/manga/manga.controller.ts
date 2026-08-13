@@ -30,6 +30,7 @@ const CreateMangaSchema = z.object({
   author: z.string().trim().min(1).optional(),
   description: z.string().trim().min(1).optional(),
   tagIds: tagIdsSchema.optional(),
+  status: z.enum(["EN_EMISION", "FINALIZADO"]).optional(),
 });
 
 const UpdateMangaSchema = z
@@ -39,6 +40,7 @@ const UpdateMangaSchema = z
     author: z.string().trim().min(1).optional(),
     description: z.string().trim().min(1).optional(),
     tagIds: tagIdsSchema.optional(),
+    status: z.enum(["EN_EMISION", "FINALIZADO"]).optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "At least one field must be provided",
@@ -92,14 +94,15 @@ export class MangaController {
   };
 
   createManga = async (req: FastifyRequest, reply: FastifyReply) => {
-    const { title, titleKanji, author, description, tagIds } = CreateMangaSchema.parse(req.body);
+    const { title, titleKanji, author, description, tagIds, status } = CreateMangaSchema.parse(req.body);
 
     const manga = await this.service.createManga(
       title,
       author,
       tagIds ?? [],
       titleKanji,
-      description
+      description,
+      status
     );
 
     return reply.send(manga);
@@ -114,6 +117,7 @@ export class MangaController {
       ...(body.author !== undefined ? { author: body.author } : {}),
       ...(body.description !== undefined ? { description: body.description } : {}),
       ...(body.tagIds !== undefined ? { tagIds: body.tagIds } : {}),
+      ...(body.status !== undefined ? { status: body.status } : {}),
     };
 
     const manga = await this.service.updateManga(mangaId, payload);

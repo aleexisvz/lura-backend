@@ -18,6 +18,7 @@ type RawManga = {
   author: string | null;
   description: string | null;
   coverPath: string | null;
+  status: "EN_EMISION" | "FINALIZADO";
   createdAt: Date;
   mangaTags?: Array<{
     Tag: {
@@ -67,7 +68,8 @@ export class MangaService {
     author?: string,
     tagIds: string[] = [],
     titleKanji?: string,
-    description?: string
+    description?: string,
+    status?: "EN_EMISION" | "FINALIZADO"
   ) {
     const validTagIds = await this.assertTagIdsForScope(tagIds, "MANGA");
     const created = await this.repo.createManga({
@@ -75,6 +77,7 @@ export class MangaService {
       ...(titleKanji !== undefined ? { titleKanji } : {}),
       ...(author && { author }),
       ...(description !== undefined ? { description } : {}),
+      ...(status !== undefined ? { status } : {}),
       tagIds: validTagIds,
     });
 
@@ -89,6 +92,7 @@ export class MangaService {
       author?: string;
       description?: string;
       tagIds?: string[];
+      status?: "EN_EMISION" | "FINALIZADO";
     }
   ) {
     const existing = await this.repo.findMangaById(mangaId);
@@ -444,6 +448,7 @@ export class MangaService {
       titleKanji: manga.titleKanji,
       author: manga.author,
       description: manga.description,
+      status: manga.status,
       tags,
       categories: tags.map((tag) => tag.name),
       coverUrl: this.toCoverUrl(manga.coverPath, `/manga/${manga.id}/cover`),

@@ -34,6 +34,11 @@ enum Role {
   ADMIN
 }
 
+enum MangaStatus {
+  EN_EMISION
+  FINALIZADO
+}
+
 model Manga {
   id        String   @id @default(cuid())
   title     String
@@ -41,6 +46,7 @@ model Manga {
   author    String?
   description String?
   coverPath String?
+  status    MangaStatus @default(EN_EMISION)
 
   volumes   Volume[]
   mangaTags MangaTag[]
