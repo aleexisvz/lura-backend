@@ -1,7 +1,7 @@
 import type { TagScope } from "@prisma/client";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import path from "node:path";
-import fs from "node:fs";
+import { Readable } from "node:stream";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { MangaRepository } from "./manga.repository.js";
@@ -160,23 +160,20 @@ export class MangaService {
   }
 
   async uploadPages(req: FastifyRequest, mangaId: string, volumeId: string) {
-    const uploadSession = randomUUID();
-    const tempDir = path.join(process.cwd(), "storage", "temp", uploadSession);
-
-    await this.storage.ensureDir(tempDir);
     const parts = req.parts();
-    const uploadedFiles: { tempFilename: string; originalFilename: string }[] = [];
+    const uploadedFiles: { buffer: Buffer; originalFilename: string }[] = [];
     for await (const part of parts) {
       if (part.type !== "file") continue;
       const originalFilename = part.filename ?? `${randomUUID()}.jpeg`;
-      const extension = path.extname(originalFilename) || ".jpeg";
-      const tempFilename = `${randomUUID()}${extension}`;
-      const filepath = path.join(tempDir, tempFilename);
 
-      await this.storage.saveStream(part.file, filepath);
+      const buffer = await part.toBuffer();
+      const webpBuffer = await sharp(buffer)
+        .resize({ width: 2048, withoutEnlargement: true })
+        .webp({ quality: 85 })
+        .toBuffer();
 
       uploadedFiles.push({
-        tempFilename,
+        buffer: webpBuffer,
         originalFilename,
       });
     }
@@ -187,26 +184,14 @@ export class MangaService {
       throw badRequest("NO_FILES_UPLOADED", "No files uploaded");
     }
 
-    const finalDir = path.join(
-      process.cwd(),
-      "storage",
-      "manga",
-      mangaId,
-      "volumes",
-      volumeId,
-      "pages"
-    );
-
-    await this.storage.ensureDir(finalDir);
     const pages: { index: number; filename: string }[] = [];
 
     for (const [position, original] of sortedFiles.entries()) {
       const index = position + 1;
       const newName = `${String(index).padStart(3, "0")}.webp`;
-      const src = path.join(tempDir, original.tempFilename);
-      const dest = path.join(finalDir, newName);
-      await this.processImageToWebP(src, dest);
-      await fs.promises.unlink(src);
+      const dest = this.storage.resolveMangaPagePath(mangaId, volumeId, newName);
+      
+      await this.storage.saveStream(Readable.from(original.buffer), dest);
 
       pages.push({
         index,
@@ -217,7 +202,6 @@ export class MangaService {
     await this.repo.deletePagesByVolumeId(volumeId);
     await this.repo.createPages(volumeId, pages);
     await this.repo.updateVolumeStatus(volumeId, pages.length);
-    await fs.promises.rm(tempDir, { recursive: true, force: true });
 
     return {
       uploaded: pages.length,
@@ -232,16 +216,15 @@ export class MangaService {
 
     const file = await this.getRequiredFile(req);
     this.resolveCoverExtension(file.filename, file.mimetype); // validate input format
-    const coverDir = this.storage.resolveMangaCoverDir(mangaId);
-    const tempPath = path.join(coverDir, `tmp-${randomUUID()}`);
     const absolutePath = this.storage.resolveMangaCoverPath(mangaId, ".webp");
     const relativePath = path.posix.join("manga", mangaId, "cover", "cover.webp");
 
-    await this.storage.ensureDir(coverDir);
-    await this.storage.saveStream(file.file, tempPath);
-    await this.storage.removeFilesByPrefix(coverDir, "cover.");
-    await this.processImageToWebP(tempPath, absolutePath);
-    await fs.promises.unlink(tempPath);
+    const webpBuffer = await sharp(await file.toBuffer())
+      .resize({ width: 2048, withoutEnlargement: true })
+      .webp({ quality: 85 })
+      .toBuffer();
+
+    await this.storage.saveStream(Readable.from(webpBuffer), absolutePath);
     await this.repo.updateMangaCoverPath(mangaId, relativePath);
 
     return { uploaded: true };
@@ -249,14 +232,12 @@ export class MangaService {
 
   async uploadVolumeCover(req: FastifyRequest, mangaId: string, volumeId: string) {
     const volume = await this.repo.findVolumeById(volumeId);
-    if (!volume || volume.mangaId !== mangaId) {
+    if (!volume) {
       throw notFound("VOLUME_NOT_FOUND", "Volume not found");
     }
 
     const file = await this.getRequiredFile(req);
     this.resolveCoverExtension(file.filename, file.mimetype); // validate input format
-    const coverDir = this.storage.resolveVolumeCoverDir(mangaId, volumeId);
-    const tempPath = path.join(coverDir, `tmp-${randomUUID()}`);
     const absolutePath = this.storage.resolveVolumeCoverPath(mangaId, volumeId, ".webp");
     const relativePath = path.posix.join(
       "manga",
@@ -267,11 +248,12 @@ export class MangaService {
       "cover.webp"
     );
 
-    await this.storage.ensureDir(coverDir);
-    await this.storage.saveStream(file.file, tempPath);
-    await this.storage.removeFilesByPrefix(coverDir, "cover.");
-    await this.processImageToWebP(tempPath, absolutePath);
-    await fs.promises.unlink(tempPath);
+    const webpBuffer = await sharp(await file.toBuffer())
+      .resize({ width: 2048, withoutEnlargement: true })
+      .webp({ quality: 85 })
+      .toBuffer();
+
+    await this.storage.saveStream(Readable.from(webpBuffer), absolutePath);
     await this.repo.updateVolumeCoverPath(volumeId, relativePath);
 
     return { uploaded: true };
@@ -361,13 +343,6 @@ export class MangaService {
     }
 
     return this.streamImage(reply, filepath, path.basename(volume.coverPath));
-  }
-
-  private async processImageToWebP(src: string, dest: string): Promise<void> {
-    await sharp(src)
-      .resize({ width: 2048, withoutEnlargement: true })
-      .webp({ quality: 85 })
-      .toFile(dest);
   }
 
   private async streamImage(reply: FastifyReply, filepath: string, filename: string) {
