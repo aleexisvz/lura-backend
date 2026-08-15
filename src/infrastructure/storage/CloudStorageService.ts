@@ -1,0 +1,193 @@
+import {
+  S3Client,
+  GetObjectCommand,
+  HeadObjectCommand,
+  ListObjectsV2Command,
+  DeleteObjectsCommand,
+  CopyObjectCommand,
+  DeleteObjectCommand
+} from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
+import { env } from "../../config/env.js";
+
+export class CloudStorageService {
+  private s3: S3Client;
+  private bucket: string;
+
+  constructor() {
+    this.bucket = env.S3_BUCKET_NAME;
+    this.s3 = new S3Client({
+      region: "auto", // Cloudflare R2 uses 'auto'
+      endpoint: env.S3_ENDPOINT,
+      credentials: {
+        accessKeyId: env.S3_ACCESS_KEY,
+        secretAccessKey: env.S3_SECRET_KEY,
+      },
+    });
+  }
+
+  // En S3 no existen las carpetas reales, por lo que no es necesario crearlas.
+  async ensureDir(_dir: string) {
+    return;
+  }
+
+  async saveStream(stream: NodeJS.ReadableStream, filepath: string) {
+    const upload = new Upload({
+      client: this.s3,
+      params: {
+        Bucket: this.bucket,
+        Key: this.normalizeKey(filepath),
+        Body: stream,
+      },
+    });
+    await upload.done();
+  }
+
+  async moveDir(src: string, dest: string) {
+    // S3 no tiene "mover carpeta". Debemos listar todos los objetos de src, copiarlos a dest, y borrarlos de src.
+    const srcPrefix = this.normalizeKey(src) + "/";
+    const destPrefix = this.normalizeKey(dest) + "/";
+    
+    const listedObjects = await this.s3.send(
+      new ListObjectsV2Command({ Bucket: this.bucket, Prefix: srcPrefix })
+    );
+
+    if (!listedObjects.Contents || listedObjects.Contents.length === 0) return;
+
+    for (const object of listedObjects.Contents) {
+      if (!object.Key) continue;
+      const newKey = object.Key.replace(srcPrefix, destPrefix);
+
+      await this.s3.send(
+        new CopyObjectCommand({
+          Bucket: this.bucket,
+          CopySource: `${this.bucket}/${object.Key}`,
+          Key: newKey,
+        })
+      );
+
+      await this.s3.send(
+        new DeleteObjectCommand({
+          Bucket: this.bucket,
+          Key: object.Key,
+        })
+      );
+    }
+  }
+
+  async listFiles(dir: string) {
+    const prefix = this.normalizeKey(dir) + "/";
+    const listedObjects = await this.s3.send(
+      new ListObjectsV2Command({ Bucket: this.bucket, Prefix: prefix })
+    );
+    return (listedObjects.Contents || []).map(obj => obj.Key?.replace(prefix, "") || "");
+  }
+
+  async exists(filepath: string) {
+    try {
+      await this.s3.send(
+        new HeadObjectCommand({
+          Bucket: this.bucket,
+          Key: this.normalizeKey(filepath),
+        })
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async createReadStream(filepath: string) {
+    const data = await this.s3.send(
+      new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: this.normalizeKey(filepath),
+      })
+    );
+    return data.Body as NodeJS.ReadableStream;
+  }
+
+  async getFileStats(filepath: string) {
+    const head = await this.s3.send(
+      new HeadObjectCommand({
+        Bucket: this.bucket,
+        Key: this.normalizeKey(filepath),
+      })
+    );
+    return {
+      size: head.ContentLength || 0,
+      mtime: head.LastModified || new Date(),
+    };
+  }
+
+  async removeFilesByPrefix(dir: string, prefix: string) {
+    const fullPrefix = this.normalizeKey(dir) + "/" + prefix;
+    const listedObjects = await this.s3.send(
+      new ListObjectsV2Command({ Bucket: this.bucket, Prefix: fullPrefix })
+    );
+
+    if (!listedObjects.Contents || listedObjects.Contents.length === 0) return;
+
+    await this.s3.send(
+      new DeleteObjectsCommand({
+        Bucket: this.bucket,
+        Delete: {
+          Objects: listedObjects.Contents.map((obj) => ({ Key: obj.Key })),
+        },
+      })
+    );
+  }
+
+  // --- Mapeo de rutas (Keys en S3) ---
+  // A diferencia de LocalStorage, aquí devolvemos strings limpios (sin process.cwd())
+
+  private normalizeKey(filepath: string) {
+    // Si la ruta viene con barras invertidas (Windows), las convertimos a barras normales (S3)
+    return filepath.replace(/\\/g, "/").replace(/^\/+/, "");
+  }
+
+  resolveMangaPagePath(mangaId: string, volumeId: string, filename: string) {
+    return `manga/${mangaId}/volumes/${volumeId}/pages/${filename}`;
+  }
+
+  resolveBookEpubPath(bookId: string) {
+    return `books/${bookId}/book.epub`;
+  }
+
+  resolveMangaCoverDir(mangaId: string) {
+    return `manga/${mangaId}/cover`;
+  }
+
+  resolveMangaCoverPath(mangaId: string, extension: string) {
+    return `${this.resolveMangaCoverDir(mangaId)}/cover${extension}`;
+  }
+
+  resolveVolumeCoverDir(mangaId: string, volumeId: string) {
+    return `manga/${mangaId}/volumes/${volumeId}/cover`;
+  }
+
+  resolveVolumeCoverPath(mangaId: string, volumeId: string, extension: string) {
+    return `${this.resolveVolumeCoverDir(mangaId, volumeId)}/cover${extension}`;
+  }
+
+  resolveBookCoverDir(bookId: string) {
+    return `books/${bookId}/cover`;
+  }
+
+  resolveBookCoverPath(bookId: string, extension: string) {
+    return `${this.resolveBookCoverDir(bookId)}/cover${extension}`;
+  }
+
+  resolveUserProfileImageDir(userId: string) {
+    return `users/${userId}/profile`;
+  }
+
+  resolveUserProfileImagePath(userId: string, extension: string) {
+    return `${this.resolveUserProfileImageDir(userId)}/avatar${extension}`;
+  }
+
+  resolveAbsolutePath(relativePath: string) {
+    // En S3 la ruta "relativa" que guardamos en BD es directamente la Key
+    return relativePath;
+  }
+}

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { LocalStorageService } from "../../infrastructure/storage/LocalStorageService.js";
+import { CloudStorageService } from "../../infrastructure/storage/CloudStorageService.js";
 import { requireAuth } from "../../shared/http/auth.js";
 import { UsersController } from "./users.controller.js";
 import { UsersRepository } from "./users.repository.js";
@@ -7,7 +7,7 @@ import { UsersService } from "./users.service.js";
 
 export async function usersRoutes(app: FastifyInstance) {
   const repo = new UsersRepository();
-  const storage = new LocalStorageService();
+  const storage = new CloudStorageService();
   const service = new UsersService(repo, storage);
   const controller = new UsersController(service);
 

@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify"
 import { MangaRepository } from "./manga.repository.js"
 import { MangaService } from "./manga.service.js"
 import { MangaController } from "./manga.controller.js"
-import { LocalStorageService } from "../../infrastructure/storage/LocalStorageService.js"
+import { CloudStorageService } from "../../infrastructure/storage/CloudStorageService.js"
 import { requireAuth } from "../../shared/http/auth.js"
 import { requireAdmin } from "../../shared/http/requiereAdmin.js"
 import { TagsRepository } from "../tags/tags.repository.js"
@@ -10,7 +10,7 @@ import { TagsRepository } from "../tags/tags.repository.js"
 export async function mangaRoutes(app: FastifyInstance) {
 
   const repo = new MangaRepository()
-  const storage = new LocalStorageService()
+  const storage = new CloudStorageService()
   const tagsRepo = new TagsRepository()
   const service = new MangaService(repo, storage, tagsRepo)
   const controller = new MangaController(service)

@@ -2,7 +2,7 @@ import type { TagScope } from "@prisma/client";
 import path from "node:path";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { notFound, badRequest } from "../../shared/errors/error-factory.js";
-import { LocalStorageService } from "../../infrastructure/storage/LocalStorageService.js";
+import { CloudStorageService } from "../../infrastructure/storage/CloudStorageService.js";
 import { BookRepository } from "./book.repository.js";
 import type { CreateBookDTO, PublicBookDTO, UpdateBookDTO } from "./book.types.js";
 import { getImageContentType } from "../../shared/utils/get-image-content-type.js";
@@ -11,7 +11,7 @@ import { TagsRepository } from "../tags/tags.repository.js";
 export class BookService {
   constructor(
     private repo: BookRepository,
-    private storage: LocalStorageService,
+    private storage: CloudStorageService,
     private tagsRepo: TagsRepository
   ) {}
 

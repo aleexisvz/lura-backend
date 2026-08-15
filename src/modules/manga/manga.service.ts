@@ -5,7 +5,7 @@ import fs from "node:fs";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { MangaRepository } from "./manga.repository.js";
-import { LocalStorageService } from "../../infrastructure/storage/LocalStorageService.js";
+import { CloudStorageService } from "../../infrastructure/storage/CloudStorageService.js";
 import { naturalSortByFilename } from "../../shared/utils/natural-sort.js";
 import { notFound, conflict, badRequest } from "../../shared/errors/error-factory.js";
 import { getImageContentType } from "../../shared/utils/get-image-content-type.js";
@@ -44,7 +44,7 @@ type RawVolume = {
 export class MangaService {
   constructor(
     private repo: MangaRepository,
-    private storage: LocalStorageService,
+    private storage: CloudStorageService,
     private tagsRepo: TagsRepository
   ) {}
 

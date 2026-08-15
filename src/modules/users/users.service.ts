@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { LocalStorageService } from "../../infrastructure/storage/LocalStorageService.js";
+import { CloudStorageService } from "../../infrastructure/storage/CloudStorageService.js";
 import { badRequest, notFound } from "../../shared/errors/error-factory.js";
 import { getImageContentType } from "../../shared/utils/get-image-content-type.js";
 import { buildReadingLevelSnapshot } from "../reading/reading-xp.js";
@@ -12,7 +12,7 @@ const PROFILE_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
 export class UsersService {
   constructor(
     private readonly repo: UsersRepository,
-    private readonly storage: LocalStorageService
+    private readonly storage: CloudStorageService
   ) {}
 
   async getMe(userId: string): Promise<PublicUserDTO> {

@@ -28,7 +28,7 @@ pnpm-debug.log*
 /generated/prisma
 
 # App specific / User files
-storage/
+/storage/
 uploads/
 downloads/
 /Markdown
