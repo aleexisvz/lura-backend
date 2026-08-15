@@ -1,5 +1,8 @@
-import "dotenv/config";
+import { config } from "dotenv";
 import { z } from "zod";
+
+// Forzamos a dotenv a sobreescribir las variables del sistema con las del .env
+config({ override: true });
 
 // All environment variables are validated at startup.
 // If a required variable is missing or fails its constraint,
@@ -16,6 +19,13 @@ const EnvSchema = z.object({
   // Accepts any value understood by the jsonwebtoken "expiresIn" option.
   // Examples: "15m", "1h", "7d".
   JWT_EXPIRES_IN: z.string().default("15m"),
+
+  // Cloud Storage (R2 / S3)
+  S3_ENDPOINT: z.string().url(),
+  S3_ACCESS_KEY: z.string().min(1),
+  S3_SECRET_KEY: z.string().min(1),
+  S3_BUCKET_NAME: z.string().min(1),
+  S3_PUBLIC_URL: z.string().url(),
 
   READING_XP_PER_MINUTE: z.coerce.number().int().positive().default(1),
   READING_XP_SESSION_CAP_SECONDS: z.coerce.number().int().positive().default(1800),
