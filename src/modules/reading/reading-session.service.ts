@@ -53,6 +53,7 @@ export class ReadingSessionService {
                 endedAt,
                 durationSeconds,
                 xpAwarded,
+                contentType: openSession.contentType,
             });
         }
 
@@ -103,6 +104,7 @@ export class ReadingSessionService {
             endedAt: now,
             durationSeconds,
             xpAwarded,
+            contentType: session.contentType,
         });
     }
 

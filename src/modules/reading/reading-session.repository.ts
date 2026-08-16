@@ -53,8 +53,9 @@ export class ReadingSessionRepository {
         endedAt: Date;
         durationSeconds: number;
         xpAwarded: number;
+        contentType: "MANGA" | "BOOK";
     }) {
-        const { sessionId, userId, endedAt, durationSeconds, xpAwarded } = input;
+        const { sessionId, userId, endedAt, durationSeconds, xpAwarded, contentType } = input;
 
         return prisma.$transaction(async (tx) => {
             const updatedSession = await tx.readingSession.update({
@@ -66,31 +67,36 @@ export class ReadingSessionRepository {
                 },
             });
 
-            if (xpAwarded > 0) {
-                await tx.user.update({
-                    where: { id: userId },
-                    data: {
-                        readingXpTotal: {
-                            increment: xpAwarded,
-                        },
-                    },
-                });
+            const userUpdateData: any = {
+                readingTimeTotalSeconds: { increment: durationSeconds },
+                readingSessionsCount: { increment: 1 },
+            };
+            
+            if (contentType === "MANGA") {
+                userUpdateData.readingTimeMangaSeconds = { increment: durationSeconds };
+            } else if (contentType === "BOOK") {
+                userUpdateData.readingTimeBookSeconds = { increment: durationSeconds };
             }
+            
+            if (xpAwarded > 0) {
+                userUpdateData.readingXpTotal = { increment: xpAwarded };
+            }
+
+            await tx.user.update({
+                where: { id: userId },
+                data: userUpdateData,
+            });
 
             return updatedSession;
         });
     }
 
-    getTotalReadingTimeByUser(userId: string) {
-        return prisma.readingSession.aggregate({
-            where: {
-                userId,
-                durationSeconds: { not: null },
-            },
-            _sum: {
-                durationSeconds: true,
-            },
+    async getTotalReadingTimeByUser(userId: string) {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { readingTimeTotalSeconds: true },
         });
+        return { _sum: { durationSeconds: user?.readingTimeTotalSeconds ?? 0 } };
     }
 
     async getUserReadingXpTotal(userId: string) {
@@ -104,26 +110,28 @@ export class ReadingSessionRepository {
         return user?.readingXpTotal ?? 0;
     }
 
-    getTotalReadingTimeByUserAndType(
+    async getTotalReadingTimeByUserAndType(
         userId: string,
         contentType: "MANGA" | "BOOK"
     ) {
-        return prisma.readingSession.aggregate({
-            where: {
-                userId,
-                contentType,
-                durationSeconds: { not: null },
-            },
-            _sum: {
-                durationSeconds: true,
-            },
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { readingTimeMangaSeconds: true, readingTimeBookSeconds: true },
         });
+        
+        const seconds = contentType === "MANGA" 
+            ? (user?.readingTimeMangaSeconds ?? 0) 
+            : (user?.readingTimeBookSeconds ?? 0);
+            
+        return { _sum: { durationSeconds: seconds } };
     }
 
-    countCompletedByUser(userId: string) {
-        return prisma.readingSession.count({
-            where: { userId, endedAt: { not: null } },
+    async countCompletedByUser(userId: string) {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { readingSessionsCount: true },
         });
+        return user?.readingSessionsCount ?? 0;
     }
 
     async countDistinctCompletedSeriesByUser(userId: string) {
