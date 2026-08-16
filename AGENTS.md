@@ -1,127 +1,57 @@
-# Lura — Agent Instructions
+# Lura Backend — Agent Instructions
 
-## Overview
-Lura is a fullstack web application that acts as a **digital library and reader** for:
-- Manga (images)
-- Books (EPUB, future)
-
-The system is designed as:
-- A **centralized content library (admin-managed)**
-- Users consume content, track progress, and reading time
-
----
+## Project
+Lura is a fullstack digital library and reader for Manga (images) and Books (EPUB).
+This repository is the **backend API**.
 
 ## Tech Stack
-
-- Node.js
-- TypeScript (ESM)
+- Node.js + TypeScript (ESM)
 - Fastify
-- Prisma v7 + @prisma/adapter-pg
-- PostgreSQL
+- Prisma v7 + @prisma/adapter-pg + PostgreSQL
 - Zod (validation)
-
----
+- Cloudflare R2 (storage via @aws-sdk/client-s3)
 
 ## Architecture
-
-- Modular by feature (NOT global layers)
-- Each module contains:
-  - controller
-  - service
-  - repository
-  - types/domain
-
-Flow:
-
-Controller → Service → Repository → Prisma
-
----
-
-## Core Principles
-
-- Do NOT change folder structure unless explicitly required
-- Prefer incremental changes over large refactors
-- Always respect existing architecture
-- Keep logic inside services, not controllers
-- Use repository layer for DB access
-- Avoid tight coupling between modules
-
----
+- Modular by feature (NOT global layers).
+- Each module: `controller → service → repository → Prisma`.
+- Keep business logic in **services only**. Controllers are thin route handlers.
+- Use the **repository layer** for all DB access. Never call Prisma directly from services.
+- Do NOT change folder structure unless explicitly requested.
 
 ## Error Handling
+- Use `AppError` for all expected errors. Never throw raw `Error` for business logic.
+- Error response shape: `{ code, message, details }`.
 
-- Use `AppError` for all expected errors
-- Never throw raw `Error` for business logic
-- Error responses must follow:
-
-```json
-{
-  "code": "ERROR_CODE",
-  "message": "Human readable message",
-  "details": null
-}
-```
-
----
-
-## Domain Rules
-
-- Manga / Volume / Page are global (shared)
-- Users do NOT own content
-- Only ADMIN can upload content
-- Users:
-  - read
-  - track progress
-  - accumulate reading time
-
----
-
-## Storage
-
-- Local filesystem storage
-- Structure:
-  `storage/manga/{mangaId}/volumes/{volumeId}/pages/{filename}`
-- NEVER expose filesystem paths in API responses
-
----
+## Storage (Cloudflare R2)
+- All files are stored in Cloudflare R2 via `CloudStorageService`.
+- Use `storage.getPublicUrl(key)` to generate public CDN URLs.
+- **Never** expose internal storage keys or filesystem paths in API responses.
+- **Never** proxy or stream image files through the backend. Return public CDN URLs in DTOs instead.
 
 ## API Rules
+- `listVolumePages` returns `{ index, imageUrl }` where `imageUrl` is an absolute CDN URL.
+- All image fields in DTOs (`coverUrl`, `profileImageUrl`, `imageUrl`) must be absolute public URLs.
+- Never return internal filenames, storage keys, or relative paths.
 
-- `listVolumePages` must return:
-  - index
-  - imageUrl
-- NEVER return internal filenames or paths
+## Domain Rules
+- Manga / Volume / Page are global (shared across all users).
+- Users do NOT own content. Only ADMIN can upload content.
+- Users: read, track progress, accumulate reading time and XP.
 
----
+## Code Style
+- Prefer readability over cleverness.
+- Prefer incremental changes over large refactors.
+- Avoid premature abstraction and tight coupling between modules.
+- Validate all input with Zod schemas.
 
-## Performance
+## Git Workflow
+- Write commit messages in **English** using Conventional Commits (`feat:`, `fix:`, `perf:`, `style:`).
+- **Do NOT commit until the user explicitly confirms the change works.**
+- If a fix requires multiple iterations, keep changes local and squash into a single atomic commit once approved.
+- Work on descriptive branches (`feat/name`, `fix/name`). Merge to `main` with fast-forward when complete.
 
-- Image endpoints must:
-  - stream files
-  - include cache headers
-- Backend must be ready for frontend prefetching
-
----
-
-## Testing
-
-- Prefer unit tests for services
-- Avoid testing filesystem-heavy logic early
-- Focus on deterministic logic first
-
----
-
-## Before Implementing Anything
-
-Always read:
+## Before Implementing
+Read these docs if they exist:
 - `docs/architecture/backend-architecture.md`
 - `docs/architecture/domain-rules.md`
 - `docs/working/current-status.md`
-
----
-
-## Development Style
-
-- Keep code clean and explicit
-- Prefer readability over cleverness
-- Avoid premature abstraction
