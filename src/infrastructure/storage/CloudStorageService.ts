@@ -141,6 +141,11 @@ export class CloudStorageService {
   // --- Mapeo de rutas (Keys en S3) ---
   // A diferencia de LocalStorage, aquí devolvemos strings limpios (sin process.cwd())
 
+  getPublicUrl(filepath: string) {
+    const baseUrl = env.S3_PUBLIC_URL.replace(/\/$/, "");
+    return `${baseUrl}/${this.normalizeKey(filepath)}`;
+  }
+
   private normalizeKey(filepath: string) {
     // Si la ruta viene con barras invertidas (Windows), las convertimos a barras normales (S3)
     return filepath.replace(/\\/g, "/").replace(/^\/+/, "");

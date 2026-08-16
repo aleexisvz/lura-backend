@@ -120,17 +120,8 @@ export class BookService {
       throw notFound("COVER_FILE_NOT_FOUND", "Cover file not found");
     }
 
-    const stats = await this.storage.getFileStats(filepath);
-    const filename = path.basename(book.coverPath);
-    const contentType = getImageContentType(filename);
-
-    reply.header("Content-Type", contentType);
-    reply.header("Content-Length", stats.size.toString());
-    reply.header("Last-Modified", stats.mtime.toUTCString());
-    reply.header("Cache-Control", "private, max-age=86400");
-    reply.header("Content-Disposition", `inline; filename="${filename}"`);
-
-    return reply.send(this.storage.createReadStream(filepath));
+    const publicUrl = this.storage.getPublicUrl(filepath);
+    return reply.redirect(publicUrl);
   }
 
   private async assertTagIdsForScope(tagIds: string[], scope: TagScope) {
