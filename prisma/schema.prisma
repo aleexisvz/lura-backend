@@ -20,6 +20,10 @@ model User {
   role      Role     @default(USER)
   profileImagePath String?
   readingXpTotal Int @default(0)
+  readingTimeTotalSeconds Int @default(0)
+  readingTimeMangaSeconds Int @default(0)
+  readingTimeBookSeconds  Int @default(0)
+  readingSessionsCount    Int @default(0)
 
   readingSessions   ReadingSession[]
   mangaProgress     MangaProgress[]
