@@ -13,6 +13,5 @@ export async function usersRoutes(app: FastifyInstance) {
 
   app.get("/me", { preHandler: requireAuth }, controller.getMe);
   app.post("/me/upload-profile-image", { preHandler: requireAuth }, controller.uploadProfileImage);
-  app.get("/me/profile-image", { preHandler: requireAuth }, controller.streamProfileImage);
 }
 

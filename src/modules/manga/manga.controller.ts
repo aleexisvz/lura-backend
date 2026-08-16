@@ -173,19 +173,4 @@ export class MangaController {
     return reply.send(result);
   };
 
-  streamPageImage = async (req: FastifyRequest, reply: FastifyReply) => {
-    const { mangaId, volumeId, pageNumber } = PageImageParamsSchema.parse(req.params);
-
-    return this.service.streamPageImage(reply, mangaId, volumeId, Number(pageNumber));
-  };
-
-  streamMangaCover = async (req: FastifyRequest, reply: FastifyReply) => {
-    const { mangaId } = MangaIdParamsSchema.parse(req.params);
-    return this.service.streamMangaCover(reply, mangaId);
-  };
-
-  streamVolumeCover = async (req: FastifyRequest, reply: FastifyReply) => {
-    const { mangaId, volumeId } = MangaVolumeParamsSchema.parse(req.params);
-    return this.service.streamVolumeCover(reply, mangaId, volumeId);
-  };
 }

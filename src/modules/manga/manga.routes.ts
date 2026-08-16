@@ -45,23 +45,10 @@ export async function mangaRoutes(app: FastifyInstance) {
 
   app.get("/", { preHandler: requireAuth }, controller.getAllMangas);
   app.get("/:mangaId", { preHandler: requireAuth }, controller.getMangaById);
-  app.get("/:mangaId/cover", { preHandler: requireAuth }, controller.streamMangaCover);
   app.get("/:mangaId/volumes", { preHandler: requireAuth }, controller.listVolumes);
-  app.get(
-    "/:mangaId/volumes/:volumeId/cover",
-    { preHandler: requireAuth },
-    controller.streamVolumeCover
-  );
-
   app.get(
     "/:mangaId/volumes/:volumeId/pages",
     { preHandler: requireAuth },
     controller.listVolumePages
-  );
-
-  app.get(
-    "/:mangaId/volumes/:volumeId/pages/:pageNumber/image",
-    { preHandler: requireAuth },
-    controller.streamPageImage
   );
 }

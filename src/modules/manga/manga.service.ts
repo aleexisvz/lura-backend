@@ -275,87 +275,13 @@ export class MangaService {
         title: volume.title,
         pagesCount: volume.pagesCount,
         status: volume.status,
-        coverUrl: this.toCoverUrl(volume.coverPath, `/manga/${mangaId}/volumes/${volumeId}/cover`),
+        coverUrl: this.toCoverUrl(volume.coverPath),
       },
       pages: pages.map((page) => ({
         index: page.index,
-        imageUrl: `/manga/${mangaId}/volumes/${volumeId}/pages/${page.index}/image`,
+        imageUrl: this.storage.getPublicUrl(this.storage.resolveMangaPagePath(mangaId, volumeId, page.filename)),
       })),
     };
-  }
-
-  async streamPageImage(reply: FastifyReply, mangaId: string, volumeId: string, pageIndex: number) {
-    const volume = await this.repo.findVolumeById(volumeId);
-
-    if (!volume || volume.mangaId !== mangaId) {
-      throw notFound("VOLUME_NOT_FOUND", "Volume not found");
-    }
-
-    const page = await this.repo.findPageByVolumeAndIndex(volumeId, pageIndex);
-
-    if (!page) {
-      throw notFound("PAGE_NOT_FOUND", "Page not found");
-    }
-
-    const filepath = this.storage.resolveMangaPagePath(mangaId, volumeId, page.filename);
-    const exists = await this.storage.exists(filepath);
-
-    if (!exists) {
-      throw notFound("PAGE_FILE_NOT_FOUND", "Page file not found");
-    }
-
-    return this.streamImage(reply, filepath, page.filename);
-  }
-
-  async streamMangaCover(reply: FastifyReply, mangaId: string) {
-    const manga = await this.repo.findMangaById(mangaId);
-    if (!manga) {
-      throw notFound("MANGA_NOT_FOUND", "Manga not found");
-    }
-
-    if (!manga.coverPath) {
-      throw notFound("MANGA_COVER_NOT_FOUND", "Manga cover not found");
-    }
-
-    const filepath = this.storage.resolveAbsolutePath(manga.coverPath);
-    const exists = await this.storage.exists(filepath);
-    if (!exists) {
-      throw notFound("COVER_FILE_NOT_FOUND", "Cover file not found");
-    }
-
-    return this.streamImage(reply, filepath, path.basename(manga.coverPath));
-  }
-
-  async streamVolumeCover(reply: FastifyReply, mangaId: string, volumeId: string) {
-    const volume = await this.repo.findVolumeById(volumeId);
-    if (!volume || volume.mangaId !== mangaId) {
-      throw notFound("VOLUME_NOT_FOUND", "Volume not found");
-    }
-
-    if (!volume.coverPath) {
-      throw notFound("VOLUME_COVER_NOT_FOUND", "Volume cover not found");
-    }
-
-    const filepath = this.storage.resolveAbsolutePath(volume.coverPath);
-    const exists = await this.storage.exists(filepath);
-    if (!exists) {
-      throw notFound("COVER_FILE_NOT_FOUND", "Cover file not found");
-    }
-
-    return this.streamImage(reply, filepath, path.basename(volume.coverPath));
-  }
-
-  private async streamImage(reply: FastifyReply, filepath: string, filename: string) {
-    const stats = await this.storage.getFileStats(filepath);
-    const contentType = getImageContentType(filename);
-
-    reply.header("Content-Type", contentType);
-    reply.header("Content-Length", stats.size.toString());
-    reply.header("Last-Modified", stats.mtime.toUTCString());
-    reply.header("Cache-Control", "private, max-age=86400");
-    reply.header("Content-Disposition", `inline; filename="${filename}"`);
-
-    return reply.send(await this.storage.createReadStream(filepath));
   }
 
   private async assertTagIdsForScope(tagIds: string[], scope: TagScope) {
@@ -406,8 +332,8 @@ export class MangaService {
     throw badRequest("INVALID_PARAMS", "Invalid image file");
   }
 
-  private toCoverUrl(coverPath: string | null, fallbackUrl: string) {
-    return coverPath ? fallbackUrl : null;
+  private toCoverUrl(coverPath: string | null) {
+    return coverPath ? this.storage.getPublicUrl(coverPath) : null;
   }
 
   private toPublicManga(manga: RawManga) {
@@ -426,7 +352,7 @@ export class MangaService {
       status: manga.status,
       tags,
       categories: tags.map((tag) => tag.name),
-      coverUrl: this.toCoverUrl(manga.coverPath, `/manga/${manga.id}/cover`),
+      coverUrl: this.toCoverUrl(manga.coverPath),
       createdAt: manga.createdAt,
     };
   }
@@ -439,10 +365,7 @@ export class MangaService {
       title: volume.title,
       status: volume.status,
       pagesCount: volume.pagesCount,
-      coverUrl: this.toCoverUrl(
-        volume.coverPath,
-        `/manga/${volume.mangaId}/volumes/${volume.id}/cover`
-      ),
+      coverUrl: this.toCoverUrl(volume.coverPath),
       createdAt: volume.createdAt,
     };
   }

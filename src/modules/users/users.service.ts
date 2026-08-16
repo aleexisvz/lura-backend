@@ -43,38 +43,11 @@ export class UsersService {
 
     return {
       uploaded: true,
-      profileImageUrl: updated.profileImagePath ? "/users/me/profile-image" : null,
+      profileImageUrl: updated.profileImagePath ? this.storage.getPublicUrl(updated.profileImagePath) : null,
     };
   }
 
-  async streamProfileImage(reply: FastifyReply, userId: string) {
-    const user = await this.repo.findUserById(userId);
-    if (!user) {
-      throw notFound("USER_NOT_FOUND", "User not found");
-    }
 
-    if (!user.profileImagePath) {
-      throw notFound("USER_PROFILE_IMAGE_NOT_FOUND", "Profile image not found");
-    }
-
-    const filepath = this.storage.resolveAbsolutePath(user.profileImagePath);
-    const exists = await this.storage.exists(filepath);
-    if (!exists) {
-      throw notFound("PROFILE_IMAGE_FILE_NOT_FOUND", "Profile image file not found");
-    }
-
-    const stats = await this.storage.getFileStats(filepath);
-    const filename = path.basename(user.profileImagePath);
-    const contentType = getImageContentType(filename);
-
-    reply.header("Content-Type", contentType);
-    reply.header("Content-Length", stats.size.toString());
-    reply.header("Last-Modified", stats.mtime.toUTCString());
-    reply.header("Cache-Control", "private, max-age=86400");
-    reply.header("Content-Disposition", `inline; filename="${filename}"`);
-
-    return reply.send(await this.storage.createReadStream(filepath));
-  }
 
   private async getRequiredImageFile(req: FastifyRequest) {
     let file: Awaited<ReturnType<FastifyRequest["file"]>>;
@@ -129,7 +102,7 @@ export class UsersService {
       username: user.username,
       role: user.role,
       createdAt: user.createdAt,
-      profileImageUrl: user.profileImagePath ? "/users/me/profile-image" : null,
+      profileImageUrl: user.profileImagePath ? this.storage.getPublicUrl(user.profileImagePath) : null,
       readingXpTotal: levelSnapshot.readingXpTotal,
       readingLevel: levelSnapshot.readingLevel,
     };

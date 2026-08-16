@@ -104,34 +104,7 @@ export class BookService {
     return { uploaded: true };
   }
 
-  async streamBookCover(reply: FastifyReply, bookId: string) {
-    const book = await this.repo.findBookById(bookId);
-    if (!book) {
-      throw notFound("BOOK_NOT_FOUND", "Book not found");
-    }
 
-    if (!book.coverPath) {
-      throw notFound("BOOK_COVER_NOT_FOUND", "Book cover not found");
-    }
-
-    const filepath = this.storage.resolveAbsolutePath(book.coverPath);
-    const exists = await this.storage.exists(filepath);
-    if (!exists) {
-      throw notFound("COVER_FILE_NOT_FOUND", "Cover file not found");
-    }
-
-    const stats = await this.storage.getFileStats(filepath);
-    const filename = path.basename(book.coverPath);
-    const contentType = getImageContentType(filename);
-
-    reply.header("Content-Type", contentType);
-    reply.header("Content-Length", stats.size.toString());
-    reply.header("Last-Modified", stats.mtime.toUTCString());
-    reply.header("Cache-Control", "private, max-age=86400");
-    reply.header("Content-Disposition", `inline; filename="${filename}"`);
-
-    return reply.send(await this.storage.createReadStream(filepath));
-  }
 
   private async assertTagIdsForScope(tagIds: string[], scope: TagScope) {
     if (tagIds.length === 0) {
@@ -211,7 +184,7 @@ export class BookService {
       description: book.description,
       tags,
       categories: tags.map((tag) => tag.name),
-      coverUrl: book.coverPath ? `/books/${book.id}/cover` : null,
+      coverUrl: book.coverPath ? this.storage.getPublicUrl(book.coverPath) : null,
       createdAt: book.createdAt,
       updatedAt: book.updatedAt,
       hasEpub: Boolean(book.epubPath),

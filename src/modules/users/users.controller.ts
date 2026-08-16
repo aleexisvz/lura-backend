@@ -16,9 +16,5 @@ export class UsersController {
     return reply.send(result);
   };
 
-  streamProfileImage = async (req: FastifyRequest, reply: FastifyReply) => {
-    const userId = (req.user as { sub: string }).sub;
-    return this.service.streamProfileImage(reply, userId);
-  };
 }
 

@@ -88,8 +88,4 @@ export class BookController {
     return reply.send(result);
   };
 
-  streamBookCover = async (req: FastifyRequest, reply: FastifyReply) => {
-    const { bookId } = BookIdParamsSchema.parse(req.params);
-    return this.service.streamBookCover(reply, bookId);
-  };
 }
