@@ -20,11 +20,15 @@ describe("MangaProgressService (unit)", () => {
     deactivateByUserAndVolume: vi.fn(),
   };
 
+  const storage = {
+    getPublicUrl: vi.fn((path: string) => `https://cdn.example.com/${path}`),
+  };
+
   let service: MangaProgressService;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new MangaProgressService(repo as any, completionRepo as any);
+    service = new MangaProgressService(repo as any, completionRepo as any, storage as any);
     repo.findMangaById.mockResolvedValue({ id: "manga-1" });
     repo.findVolumeById.mockResolvedValue({
       id: "vol-1",
@@ -212,13 +216,13 @@ describe("MangaProgressService (unit)", () => {
       pageNumber: 15,
       mangaTitle: "Manga One",
       progressPercent: 50,
-      coverUrl: "/manga/manga-1/volumes/vol-1/cover",
+      coverUrl: "https://cdn.example.com/manga/1/vol/3/cover.jpg",
     });
     expect(result[1]).toMatchObject({
       volumeId: "vol-short",
       pageNumber: 1,
       progressPercent: 8,
-      coverUrl: "/manga/manga-1/cover",
+      coverUrl: "https://cdn.example.com/manga/1/cover.jpg",
     });
     expect(result[2]).toMatchObject({
       volumeId: "vol-low",

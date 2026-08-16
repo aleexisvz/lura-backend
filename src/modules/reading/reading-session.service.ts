@@ -3,6 +3,7 @@ import { MangaProgressRepository } from "./manga-progress.repository.js";
 import { VolumeCompletionRepository } from "./volume-completion.repository.js";
 import { buildReadingLevelSnapshot, calculateSessionXp } from "./reading-xp.js";
 import { AppError } from "../../shared/errors/AppError.js";
+import { CloudStorageService } from "../../infrastructure/storage/CloudStorageService.js";
 
 const DEFAULT_AUTO_CLOSED_SESSION_CAP_SECONDS = 30 * 60;
 
@@ -19,7 +20,8 @@ export class ReadingSessionService {
     constructor(
         private repo: ReadingSessionRepository,
         private progressRepo: MangaProgressRepository = new MangaProgressRepository(),
-        private completionRepo: VolumeCompletionRepository = new VolumeCompletionRepository()
+        private completionRepo: VolumeCompletionRepository = new VolumeCompletionRepository(),
+        private storage: CloudStorageService = new CloudStorageService()
     ) { }
 
     async startSession(
@@ -119,7 +121,6 @@ export class ReadingSessionService {
             pagesSum,
             totalVolumesRead,
             totalMangasRead,
-            totalSeriesRead,
             totalBooksRead,
             readingXpTotal,
         ] = await Promise.all([
@@ -130,7 +131,6 @@ export class ReadingSessionService {
             this.progressRepo.sumPagesReadByUser(userId),
             this.completionRepo.totalCompletedByUser(userId),
             this.completionRepo.countCompletedMangasByUser(userId),
-            this.repo.countDistinctCompletedSeriesByUser(userId),
             this.repo.countDistinctCompletedBooksByUser(userId),
             this.repo.getUserReadingXpTotal(userId),
         ]);
@@ -147,7 +147,7 @@ export class ReadingSessionService {
             totalPagesRead: (pagesSum._sum.page ?? 0) + (pagesSum._sum.historicalPagesRead ?? 0),
             totalVolumesRead,
             totalMangasRead,
-            totalSeriesRead,
+            totalSeriesRead: totalMangasRead,
             totalBooksRead,
             readingLevel: levelSnapshot.readingLevel,
             readingXpTotal: levelSnapshot.readingXpTotal,
@@ -167,13 +167,13 @@ export class ReadingSessionService {
             manga: manga.map((item) => ({
                 contentId: item.contentId,
                 title: item.title,
-                coverUrl: item.coverPath ? `/manga/${item.contentId}/cover` : null,
+                coverUrl: item.coverPath ? this.storage.getPublicUrl(item.coverPath) : null,
                 lastStartedAt: item.lastStartedAt,
             })),
             books: books.map((item) => ({
                 contentId: item.contentId,
                 title: item.title,
-                coverUrl: item.coverPath ? `/books/${item.contentId}/cover` : null,
+                coverUrl: item.coverPath ? this.storage.getPublicUrl(item.coverPath) : null,
                 lastStartedAt: item.lastStartedAt,
             })),
         };

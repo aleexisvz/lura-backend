@@ -1,12 +1,14 @@
 import { MangaProgressRepository } from "./manga-progress.repository.js"
 import { VolumeCompletionRepository } from "./volume-completion.repository.js"
 import { notFound, unprocessableEntity } from "../../shared/errors/error-factory.js"
+import { CloudStorageService } from "../../infrastructure/storage/CloudStorageService.js"
 
 export class MangaProgressService {
 
     constructor(
         private repo: MangaProgressRepository,
-        private completionRepo = new VolumeCompletionRepository()
+        private completionRepo = new VolumeCompletionRepository(),
+        private storage = new CloudStorageService()
     ) { }
 
     async getProgress(userId: string, mangaId: string) {
@@ -97,7 +99,7 @@ export class MangaProgressService {
                 manga.id,
                 {
                     title: manga.title,
-                    coverUrl: manga.coverPath ? `/manga/${manga.id}/cover` : null,
+                    coverUrl: manga.coverPath ? this.storage.getPublicUrl(manga.coverPath) : null,
                 },
             ])
         )
@@ -112,7 +114,7 @@ export class MangaProgressService {
                     pagesCount: volume.pagesCount,
                     status: volume.status,
                     coverUrl: volume.coverPath
-                        ? `/manga/${volume.mangaId}/volumes/${volume.id}/cover`
+                        ? this.storage.getPublicUrl(volume.coverPath)
                         : null,
                 },
             ])

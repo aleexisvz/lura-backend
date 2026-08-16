@@ -147,22 +147,6 @@ export class ReadingSessionRepository {
         return user?.readingSessionsCount ?? 0;
     }
 
-    async countDistinctCompletedSeriesByUser(userId: string) {
-        const completedSeries = await prisma.readingSession.findMany({
-            where: {
-                userId,
-                endedAt: { not: null },
-            },
-            select: {
-                contentType: true,
-                contentId: true,
-            },
-            distinct: ["contentType", "contentId"],
-        });
-
-        return completedSeries.length;
-    }
-
     async countDistinctCompletedBooksByUser(userId: string) {
         const completedBooks = await prisma.readingSession.findMany({
             where: {

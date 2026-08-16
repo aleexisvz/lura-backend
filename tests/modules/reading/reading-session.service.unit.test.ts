@@ -11,7 +11,6 @@ describe("ReadingSessionService (unit)", () => {
     getTotalReadingTimeByUser: vi.fn(),
     getTotalReadingTimeByUserAndType: vi.fn(),
     countCompletedByUser: vi.fn(),
-    countDistinctCompletedSeriesByUser: vi.fn(),
     countDistinctCompletedBooksByUser: vi.fn(),
     findRecentMangaSeriesByUser: vi.fn(),
     findRecentBookSeriesByUser: vi.fn(),
@@ -27,6 +26,10 @@ describe("ReadingSessionService (unit)", () => {
     countCompletedMangasByUser: vi.fn(),
   };
 
+  const storage = {
+    getPublicUrl: vi.fn((path: string) => `https://cdn.example.com/${path}`),
+  };
+
   let service: ReadingSessionService;
 
   beforeEach(() => {
@@ -35,7 +38,8 @@ describe("ReadingSessionService (unit)", () => {
     service = new ReadingSessionService(
       repo as any,
       progressRepo as any,
-      completionRepo as any
+      completionRepo as any,
+      storage as any
     );
     repo.countCompletedByUser.mockResolvedValue(0);
     progressRepo.sumPagesReadByUser.mockResolvedValue({
@@ -43,7 +47,6 @@ describe("ReadingSessionService (unit)", () => {
     });
     completionRepo.totalCompletedByUser.mockResolvedValue(0);
     completionRepo.countCompletedMangasByUser.mockResolvedValue(0);
-    repo.countDistinctCompletedSeriesByUser.mockResolvedValue(0);
     repo.countDistinctCompletedBooksByUser.mockResolvedValue(0);
     repo.findRecentMangaSeriesByUser.mockResolvedValue([]);
     repo.findRecentBookSeriesByUser.mockResolvedValue([]);
@@ -227,7 +230,6 @@ describe("ReadingSessionService (unit)", () => {
     });
     completionRepo.totalCompletedByUser.mockResolvedValue(7);
     completionRepo.countCompletedMangasByUser.mockResolvedValue(2);
-    repo.countDistinctCompletedSeriesByUser.mockResolvedValue(4);
     repo.countDistinctCompletedBooksByUser.mockResolvedValue(2);
     repo.getUserReadingXpTotal.mockResolvedValue(95);
 
@@ -242,7 +244,7 @@ describe("ReadingSessionService (unit)", () => {
       totalPagesRead: 150,
       totalVolumesRead: 7,
       totalMangasRead: 2,
-      totalSeriesRead: 4,
+      totalSeriesRead: 2,
       totalBooksRead: 2,
       readingLevel: 4,
       readingXpTotal: 95,
@@ -265,7 +267,6 @@ describe("ReadingSessionService (unit)", () => {
     });
     completionRepo.totalCompletedByUser.mockResolvedValue(0);
     completionRepo.countCompletedMangasByUser.mockResolvedValue(0);
-    repo.countDistinctCompletedSeriesByUser.mockResolvedValue(0);
     repo.countDistinctCompletedBooksByUser.mockResolvedValue(0);
     repo.getUserReadingXpTotal.mockResolvedValue(0);
 
@@ -317,7 +318,7 @@ describe("ReadingSessionService (unit)", () => {
         {
           contentId: "m-1",
           title: "Manga 1",
-          coverUrl: "/manga/m-1/cover",
+          coverUrl: "https://cdn.example.com/manga/m-1/cover/cover.webp",
           lastStartedAt: new Date("2026-05-01T10:00:00.000Z"),
         },
       ],
