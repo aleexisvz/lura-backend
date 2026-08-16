@@ -58,6 +58,19 @@ export class ReadingSessionRepository {
         const { sessionId, userId, endedAt, durationSeconds, xpAwarded, contentType } = input;
 
         return prisma.$transaction(async (tx) => {
+            // Check inside transaction to prevent race conditions (e.g. pagehide + visibilitychange firing concurrently)
+            const currentSession = await tx.readingSession.findUnique({
+                where: { id: sessionId },
+                select: { endedAt: true }
+            });
+
+            if (!currentSession || currentSession.endedAt) {
+                // If it's already closed, don't award anything again, just return the existing session
+                const existing = await tx.readingSession.findUnique({ where: { id: sessionId } });
+                if (!existing) throw new Error("Session not found");
+                return existing;
+            }
+
             const updatedSession = await tx.readingSession.update({
                 where: { id: sessionId },
                 data: {

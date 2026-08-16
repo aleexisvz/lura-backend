@@ -91,11 +91,12 @@ export class ReadingSessionService {
         }
 
         const now = new Date();
-        // Same milliseconds-to-seconds conversion as in startSession.
-        const durationSeconds = Math.max(
+        const autoClosedSessionCapSeconds = resolveAutoClosedSessionCapSeconds();
+        const elapsedSeconds = Math.max(
             0,
             Math.floor((now.getTime() - session.startedAt.getTime()) / 1000)
         );
+        const durationSeconds = Math.min(elapsedSeconds, autoClosedSessionCapSeconds);
         const xpAwarded = calculateSessionXp(durationSeconds);
 
         return this.repo.closeWithAward({
