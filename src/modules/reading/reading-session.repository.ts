@@ -259,4 +259,74 @@ export class ReadingSessionRepository {
             })
             .filter((item): item is RecentSeriesRawItem => item !== null);
     }
+    async purgeOldSessions(retentionDays = 30) {
+        const thresholdDate = new Date();
+        thresholdDate.setDate(thresholdDate.getDate() - retentionDays);
+
+        // Find all sessions older than the threshold date
+        const oldSessions = await prisma.readingSession.findMany({
+            where: {
+                endedAt: { lt: thresholdDate }
+            },
+            select: {
+                id: true,
+                userId: true,
+                contentId: true,
+                startedAt: true
+            }
+        });
+
+        if (oldSessions.length === 0) {
+            return 0;
+        }
+
+        // We need to keep the most recent session for each (userId, contentId) pair
+        // to not break the 'Recent Series' feature.
+        // First, get the absolute latest session date for each affected series.
+        const pairsToCheck = Array.from(
+            new Set(oldSessions.map((s) => `${s.userId}:${s.contentId}`))
+        ).map((pair) => {
+            const [userId, contentId] = pair.split(":");
+            return { userId, contentId };
+        });
+
+        const latestSessions = await prisma.readingSession.groupBy({
+            by: ["userId", "contentId"],
+            where: {
+                OR: pairsToCheck.map(p => ({ userId: p.userId as string, contentId: p.contentId as string }))
+            },
+            _max: { startedAt: true }
+        });
+
+        const latestDatesMap = new Map();
+        for (const item of latestSessions) {
+            if (item._max && item._max.startedAt) {
+                latestDatesMap.set(`${item.userId}:${item.contentId}`, item._max.startedAt.getTime());
+            }
+        }
+
+        // Filter old sessions that are NOT the latest for their series
+        const idsToDelete = oldSessions
+            .filter((session) => {
+                const latestTime = latestDatesMap.get(`${session.userId}:${session.contentId}`);
+                // If it's the exact same time as the latest, KEEP it.
+                if (latestTime && session.startedAt.getTime() === latestTime) {
+                    return false; 
+                }
+                return true; // DELETE it
+            })
+            .map((session) => session.id);
+
+        if (idsToDelete.length === 0) {
+            return 0;
+        }
+
+        const deleteResult = await prisma.readingSession.deleteMany({
+            where: {
+                id: { in: idsToDelete }
+            }
+        });
+
+        return deleteResult.count;
+    }
 }

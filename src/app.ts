@@ -6,6 +6,7 @@ import { authRoutes } from "./modules/auth/auth.routes.js";
 import { bookRoutes } from "./modules/book/book.routes.js";
 import { mangaRoutes } from "./modules/manga/manga.routes.js";
 import { AppError } from "./shared/errors/AppError.js";
+import { startReadingSessionCronJobs } from "./modules/reading/reading-session.cron.js";
 import { mangaProgressRoutes } from "./modules/reading/manga-progress.routes.js";
 import { readingSessionRoutes } from "./modules/reading/reading-session.routes.js";
 import { volumeCompletionRoutes } from "./modules/reading/volume-completion.routes.js";
@@ -148,6 +149,8 @@ export async function buildApp() {
 
   await app.register(mangaRoutes, { prefix: "/manga" })
   await app.register(tagsRoutes, { prefix: "/tags" })
+
+  startReadingSessionCronJobs();
 
   return app;
 }

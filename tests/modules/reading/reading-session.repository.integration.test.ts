@@ -112,6 +112,7 @@ describe("ReadingSessionRepository (integration)", () => {
       endedAt,
       durationSeconds: 1200,
       xpAwarded: 20,
+      contentType: "MANGA",
     });
 
     const user = await prisma.user.findUnique({
