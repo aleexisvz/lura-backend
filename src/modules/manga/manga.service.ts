@@ -168,8 +168,8 @@ export class MangaService {
 
       const buffer = await part.toBuffer();
       const webpBuffer = await sharp(buffer)
-        .resize({ width: 2048, withoutEnlargement: true })
-        .webp({ quality: 85 })
+        .resize({ width: 1000, withoutEnlargement: true })
+        .webp({ quality: 75, effort: 6 })
         .toBuffer();
 
       uploadedFiles.push({
@@ -220,8 +220,8 @@ export class MangaService {
     const relativePath = path.posix.join("manga", mangaId, "cover", "cover.webp");
 
     const webpBuffer = await sharp(await file.toBuffer())
-      .resize({ width: 2048, withoutEnlargement: true })
-      .webp({ quality: 85 })
+      .resize({ width: 600, withoutEnlargement: true })
+      .webp({ quality: 75, effort: 6 })
       .toBuffer();
 
     await this.storage.saveStream(Readable.from(webpBuffer), absolutePath);
@@ -249,8 +249,8 @@ export class MangaService {
     );
 
     const webpBuffer = await sharp(await file.toBuffer())
-      .resize({ width: 2048, withoutEnlargement: true })
-      .webp({ quality: 85 })
+      .resize({ width: 600, withoutEnlargement: true })
+      .webp({ quality: 75, effort: 6 })
       .toBuffer();
 
     await this.storage.saveStream(Readable.from(webpBuffer), absolutePath);
