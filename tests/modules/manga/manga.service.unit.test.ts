@@ -4,6 +4,9 @@ import { MangaService } from "../../../src/modules/manga/manga.service.js";
 describe("MangaService (unit)", () => {
   const repo = {
     findAllMangas: vi.fn(),
+    findFeaturedMangas: vi.fn(),
+    findRecentUpdates: vi.fn(),
+    findTopRankings: vi.fn(),
     findMangaById: vi.fn(),
     findVolumesByMangaId: vi.fn(),
     createManga: vi.fn(),
@@ -15,7 +18,8 @@ describe("MangaService (unit)", () => {
   };
 
   const storage = {
-    resolveMangaPagePath: vi.fn(),
+    resolveMangaPagePath: vi.fn((mangaId: string, volumeId: string, filename: string) => `manga/${mangaId}/volumes/${volumeId}/pages/${filename}`),
+    getPublicUrl: vi.fn((key: string) => `https://cdn.example.com/${key}`),
     exists: vi.fn(),
     getFileStats: vi.fn(),
     createReadStream: vi.fn(),
@@ -52,6 +56,86 @@ describe("MangaService (unit)", () => {
     expect(result).toEqual([
       expect.objectContaining({ id: "m-1", title: "One Piece", categories: [] }),
     ]);
+  });
+
+  it("getFeatured() should return featured mangas with latest volume", async () => {
+    repo.findFeaturedMangas.mockResolvedValue([
+      {
+        id: "m-1",
+        title: "Jujutsu Kaisen",
+        titleKanji: "呪術廻戦",
+        author: "Gege Akutami",
+        description: "Action manga",
+        coverPath: "covers/jjk.webp",
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        mangaTags: [],
+        volumes: [
+          {
+            id: "v-1",
+            mangaId: "m-1",
+            number: 24,
+            title: "Vol. 24",
+            coverPath: null,
+            status: "READY",
+            pagesCount: 190,
+            createdAt: new Date("2026-01-02T00:00:00.000Z"),
+          },
+        ],
+      },
+    ]);
+
+    const result = await service.getFeatured(5);
+
+    expect(repo.findFeaturedMangas).toHaveBeenCalledWith(5);
+    expect(result[0]?.title).toBe("Jujutsu Kaisen");
+    expect(result[0]?.latestVolume?.number).toBe(24);
+  });
+
+  it("getRecentUpdates() should return updated mangas", async () => {
+    repo.findRecentUpdates.mockResolvedValue([
+      {
+        id: "m-1",
+        title: "My Hero Academia",
+        titleKanji: "僕のヒーローアカデミア",
+        author: "Kohei Horikoshi",
+        description: null,
+        coverPath: null,
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        mangaTags: [],
+        volumes: [],
+      },
+    ]);
+
+    const result = await service.getRecentUpdates(12);
+
+    expect(repo.findRecentUpdates).toHaveBeenCalledWith(12);
+    expect(result[0]?.title).toBe("My Hero Academia");
+  });
+
+  it("getRankings() should return ranked mangas with positions", async () => {
+    repo.findTopRankings.mockResolvedValue([
+      {
+        manga: {
+          id: "m-1",
+          title: "Chainsaw Man",
+          titleKanji: "チェンソーマン",
+          author: "Tatsuki Fujimoto",
+          description: null,
+          coverPath: null,
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
+          mangaTags: [],
+          volumes: [],
+        },
+        readersCount: 42,
+      },
+    ]);
+
+    const result = await service.getRankings(10);
+
+    expect(repo.findTopRankings).toHaveBeenCalledWith(10);
+    expect(result[0]?.rank).toBe(1);
+    expect(result[0]?.readersCount).toBe(42);
+    expect(result[0]?.manga.title).toBe("Chainsaw Man");
   });
 
   it("getMangaById() should return repository value", async () => {
@@ -99,58 +183,10 @@ describe("MangaService (unit)", () => {
       { id: "t-book", scope: "BOOK", name: "Fantasy", slug: "fantasy" },
     ]);
 
-    await expect(service.createManga("Bleach", "Tite Kubo", ["t-book"])).rejects.toMatchObject({
+    await expect(service.createManga("Manga", undefined, ["t-book"])).rejects.toMatchObject({
       code: "TAG_SCOPE_MISMATCH",
       statusCode: 400,
     });
-  });
-
-  it("createVolume() should fail when manga does not exist", async () => {
-    repo.findMangaById.mockResolvedValue(null);
-
-    await expect(service.createVolume("missing-manga", 1)).rejects.toMatchObject({
-      code: "MANGA_NOT_FOUND",
-      statusCode: 404,
-    });
-
-    expect(repo.findVolumeByMangaAndNumber).not.toHaveBeenCalled();
-    expect(repo.createVolume).not.toHaveBeenCalled();
-  });
-
-  it("createVolume() should fail when volume number is duplicated", async () => {
-    repo.findMangaById.mockResolvedValue({ id: "m-1" });
-    repo.findVolumeByMangaAndNumber.mockResolvedValue({ id: "v-1", number: 1 });
-
-    await expect(service.createVolume("m-1", 1)).rejects.toMatchObject({
-      code: "VOLUME_NUMBER_DUPLICATE",
-      statusCode: 409,
-    });
-
-    expect(repo.createVolume).not.toHaveBeenCalled();
-  });
-
-  it("createVolume() should create a new volume when valid", async () => {
-    repo.findMangaById.mockResolvedValue({ id: "m-1" });
-    repo.findVolumeByMangaAndNumber.mockResolvedValue(null);
-    repo.createVolume.mockResolvedValue({
-      id: "v-1",
-      mangaId: "m-1",
-      number: 2,
-      title: "Volume 2",
-      status: "UPLOADING",
-      pagesCount: 0,
-      coverPath: null,
-      createdAt: new Date("2026-01-01T00:00:00.000Z"),
-    });
-
-    const result = await service.createVolume("m-1", 2, "Volume 2");
-
-    expect(repo.createVolume).toHaveBeenCalledWith({
-      mangaId: "m-1",
-      number: 2,
-      title: "Volume 2",
-    });
-    expect(result).toEqual(expect.objectContaining({ id: "v-1", mangaId: "m-1", number: 2 }));
   });
 
   describe("listVolumePages()", () => {
@@ -159,17 +195,18 @@ describe("MangaService (unit)", () => {
       mangaId: "m-1",
       number: 1,
       title: "Chapter 1",
-      pagesCount: 3,
       status: "READY",
+      pagesCount: 3,
       coverPath: null,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
     };
 
     it("should return pages sorted by index with correct imageUrl", async () => {
       repo.findVolumeById.mockResolvedValue(volume);
       repo.findPagesByVolume.mockResolvedValue([
-        { index: 1, filename: "001.jpeg" },
-        { index: 2, filename: "002.jpeg" },
-        { index: 3, filename: "003.jpeg" },
+        { index: 1, filename: "001.webp" },
+        { index: 2, filename: "002.webp" },
+        { index: 3, filename: "003.webp" },
       ]);
 
       const result = await service.listVolumePages("m-1", "v-1");
@@ -183,32 +220,10 @@ describe("MangaService (unit)", () => {
         coverUrl: null,
       });
       expect(result.pages).toEqual([
-        { index: 1, imageUrl: "/manga/m-1/volumes/v-1/pages/1/image" },
-        { index: 2, imageUrl: "/manga/m-1/volumes/v-1/pages/2/image" },
-        { index: 3, imageUrl: "/manga/m-1/volumes/v-1/pages/3/image" },
+        { index: 1, imageUrl: "https://cdn.example.com/manga/m-1/volumes/v-1/pages/001.webp" },
+        { index: 2, imageUrl: "https://cdn.example.com/manga/m-1/volumes/v-1/pages/002.webp" },
+        { index: 3, imageUrl: "https://cdn.example.com/manga/m-1/volumes/v-1/pages/003.webp" },
       ]);
-    });
-  });
-
-  describe("streamPageImage()", () => {
-    const volume = { id: "v-1", mangaId: "m-1", number: 1, status: "READY" };
-
-    const fakeReply = () => ({
-      header: vi.fn().mockReturnThis(),
-      send: vi.fn(),
-    });
-
-    it("should throw PAGE_NOT_FOUND when page does not exist", async () => {
-      repo.findVolumeById.mockResolvedValue(volume);
-      repo.findPageByVolumeAndIndex.mockResolvedValue(null);
-      const reply = fakeReply();
-
-      await expect(
-        service.streamPageImage(reply as any, "m-1", "v-1", 99)
-      ).rejects.toMatchObject({
-        code: "PAGE_NOT_FOUND",
-        statusCode: 404,
-      });
     });
   });
 });

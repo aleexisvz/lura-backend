@@ -30,6 +30,124 @@ export class MangaRepository {
     });
   }
 
+  findFeaturedMangas(limit = 6) {
+    return prisma.manga.findMany({
+      include: {
+        mangaTags: {
+          include: {
+            Tag: true,
+          },
+        },
+        volumes: {
+          where: { status: "READY" },
+          orderBy: { number: "desc" },
+          take: 1,
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: limit,
+    });
+  }
+
+  findRecentUpdates(limit = 12) {
+    return prisma.manga.findMany({
+      include: {
+        mangaTags: {
+          include: {
+            Tag: true,
+          },
+        },
+        volumes: {
+          where: { status: "READY" },
+          orderBy: { number: "desc" },
+          take: 1,
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: limit,
+    });
+  }
+
+  async findTopRankings(limit = 10) {
+    const sessions = await prisma.readingSession.groupBy({
+      by: ["contentId"],
+      where: { contentType: "MANGA" },
+      _count: { id: true },
+      orderBy: {
+        _count: {
+          id: "desc",
+        },
+      },
+      take: limit,
+    });
+
+    const rankedIds = sessions.map((s) => s.contentId);
+    const sessionCountMap = new Map(sessions.map((s) => [s.contentId, s._count.id]));
+
+    const mangas = await prisma.manga.findMany({
+      where: {
+        id: { in: rankedIds },
+      },
+      include: {
+        mangaTags: {
+          include: {
+            Tag: true,
+          },
+        },
+        volumes: {
+          where: { status: "READY" },
+          orderBy: { number: "desc" },
+          take: 1,
+        },
+      },
+    });
+
+    const rankedList = mangas
+      .map((manga) => ({
+        manga,
+        readersCount: sessionCountMap.get(manga.id) ?? 0,
+      }))
+      .sort((a, b) => b.readersCount - a.readersCount);
+
+    if (rankedList.length < limit) {
+      const existingIds = new Set(rankedList.map((r) => r.manga.id));
+      const fallbackMangas = await prisma.manga.findMany({
+        where: {
+          id: { notIn: Array.from(existingIds) },
+        },
+        include: {
+          mangaTags: {
+            include: {
+              Tag: true,
+            },
+          },
+          volumes: {
+            where: { status: "READY" },
+            orderBy: { number: "desc" },
+            take: 1,
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: limit - rankedList.length,
+      });
+
+      for (const manga of fallbackMangas) {
+        rankedList.push({
+          manga,
+          readersCount: 0,
+        });
+      }
+    }
+
+    return rankedList;
+  }
+
   createManga(data: {
     title: string;
     titleKanji?: string;

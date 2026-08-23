@@ -43,6 +43,10 @@ export async function mangaRoutes(app: FastifyInstance) {
     controller.uploadVolumeCover
   );
 
+  app.get("/featured", { preHandler: requireAuth }, controller.getFeatured);
+  app.get("/recent-updates", { preHandler: requireAuth }, controller.getRecentUpdates);
+  app.get("/rankings", { preHandler: requireAuth }, controller.getRankings);
+
   app.get("/", { preHandler: requireAuth }, controller.getAllMangas);
   app.get("/:mangaId", { preHandler: requireAuth }, controller.getMangaById);
   app.get("/:mangaId/volumes", { preHandler: requireAuth }, controller.listVolumes);

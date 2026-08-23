@@ -76,6 +76,21 @@ export class MangaController {
     return reply.send(mangas);
   };
 
+  getFeatured = async (_req: FastifyRequest, reply: FastifyReply) => {
+    const featured = await this.service.getFeatured(6);
+    return reply.send(featured);
+  };
+
+  getRecentUpdates = async (_req: FastifyRequest, reply: FastifyReply) => {
+    const updates = await this.service.getRecentUpdates(12);
+    return reply.send(updates);
+  };
+
+  getRankings = async (_req: FastifyRequest, reply: FastifyReply) => {
+    const rankings = await this.service.getRankings(10);
+    return reply.send(rankings);
+  };
+
   listVolumes = async (req: FastifyRequest, reply: FastifyReply) => {
     const { mangaId } = MangaIdParamsSchema.parse(req.params);
     const volumes = await this.service.getVolumesByMangaId(mangaId);

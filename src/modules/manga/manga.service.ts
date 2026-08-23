@@ -20,6 +20,7 @@ type RawManga = {
   coverPath: string | null;
   status: "EN_EMISION" | "FINALIZADO";
   createdAt: Date;
+  volumes?: RawVolume[];
   mangaTags?: Array<{
     Tag: {
       id: string;
@@ -51,6 +52,25 @@ export class MangaService {
   async getAllMangas(tagIds: string[] = []) {
     const mangas = await this.repo.findAllMangas(tagIds);
     return mangas.map((manga) => this.toPublicManga(manga));
+  }
+
+  async getFeatured(limit = 6) {
+    const mangas = await this.repo.findFeaturedMangas(limit);
+    return mangas.map((m) => this.toPublicMangaWithLatest(m));
+  }
+
+  async getRecentUpdates(limit = 12) {
+    const mangas = await this.repo.findRecentUpdates(limit);
+    return mangas.map((m) => this.toPublicMangaWithLatest(m));
+  }
+
+  async getRankings(limit = 10) {
+    const list = await this.repo.findTopRankings(limit);
+    return list.map((item, index) => ({
+      rank: index + 1,
+      readersCount: item.readersCount,
+      manga: this.toPublicMangaWithLatest(item.manga),
+    }));
   }
 
   async getMangaById(id: string) {
@@ -354,6 +374,15 @@ export class MangaService {
       categories: tags.map((tag) => tag.name),
       coverUrl: this.toCoverUrl(manga.coverPath),
       createdAt: manga.createdAt,
+    };
+  }
+
+  private toPublicMangaWithLatest(manga: RawManga & { volumes?: RawVolume[] }) {
+    const base = this.toPublicManga(manga);
+    const latestVol = manga.volumes && manga.volumes.length > 0 ? manga.volumes[0] : null;
+    return {
+      ...base,
+      latestVolume: latestVol ? this.toPublicVolume(latestVol) : null,
     };
   }
 
