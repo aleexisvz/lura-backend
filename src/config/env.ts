@@ -27,8 +27,9 @@ const EnvSchema = z.object({
   S3_BUCKET_NAME: z.string().min(1),
   S3_PUBLIC_URL: z.string().url(),
 
-  READING_XP_PER_MINUTE: z.coerce.number().int().positive().default(1),
+  READING_XP_PER_MINUTE: z.coerce.number().int().positive().default(2),
   READING_XP_SESSION_CAP_SECONDS: z.coerce.number().int().positive().default(1800),
+  READING_XP_WEEKEND_MULTIPLIER: z.coerce.number().int().positive().default(2),
 });
 
 export const env = EnvSchema.parse(process.env);
