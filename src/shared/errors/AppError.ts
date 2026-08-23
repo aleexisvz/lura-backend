@@ -38,6 +38,7 @@ export type AppErrorCode =
 	| "USER_NOT_FOUND"
 	| "USER_PROFILE_IMAGE_NOT_FOUND"
 	| "PROFILE_IMAGE_FILE_NOT_FOUND"
+	| "INVALID_IMAGE_FILE"
 	| "INTERNAL_SERVER_ERROR";
 
 export class AppError extends Error {

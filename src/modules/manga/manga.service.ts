@@ -187,10 +187,21 @@ export class MangaService {
       const originalFilename = part.filename ?? `${randomUUID()}.jpeg`;
 
       const buffer = await part.toBuffer();
-      const webpBuffer = await sharp(buffer)
-        .resize({ width: 1000, withoutEnlargement: true })
-        .webp({ quality: 75, effort: 6 })
-        .toBuffer();
+      if (!buffer || buffer.length < 10) {
+        req.log.warn({ filename: originalFilename }, "Skipping empty or invalid file buffer in uploadPages");
+        continue;
+      }
+
+      let webpBuffer: Buffer;
+      try {
+        webpBuffer = await sharp(buffer)
+          .resize({ width: 1000, withoutEnlargement: true })
+          .webp({ quality: 75, effort: 4 })
+          .toBuffer();
+      } catch (err: any) {
+        req.log.error({ err: err?.message, filename: originalFilename }, "Sharp failed to process image");
+        throw badRequest("INVALID_IMAGE_FILE", `El archivo "${originalFilename}" no es una imagen válida o está dañado: ${err?.message}`);
+      }
 
       uploadedFiles.push({
         buffer: webpBuffer,
@@ -206,17 +217,29 @@ export class MangaService {
 
     const pages: { index: number; filename: string }[] = [];
 
+    // Concurrency limit for parallel uploads to S3 / Cloudflare R2
+    const CONCURRENCY_LIMIT = 10;
+    const uploadTasks: (() => Promise<void>)[] = [];
+
     for (const [position, original] of sortedFiles.entries()) {
       const index = position + 1;
       const newName = `${String(index).padStart(3, "0")}.webp`;
       const dest = this.storage.resolveMangaPagePath(mangaId, volumeId, newName);
-      
-      await this.storage.saveStream(Readable.from(original.buffer), dest);
 
       pages.push({
         index,
         filename: newName,
       });
+
+      uploadTasks.push(async () => {
+        await this.storage.saveStream(Readable.from(original.buffer), dest);
+      });
+    }
+
+    // Execute S3 uploads in concurrent batches
+    for (let i = 0; i < uploadTasks.length; i += CONCURRENCY_LIMIT) {
+      const batch = uploadTasks.slice(i, i + CONCURRENCY_LIMIT);
+      await Promise.all(batch.map((fn) => fn()));
     }
 
     await this.repo.deletePagesByVolumeId(volumeId);

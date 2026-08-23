@@ -28,7 +28,12 @@ export class AuthController {
 
   register = async (req: FastifyRequest, reply: FastifyReply) => {
     const dto = RegisterSchema.parse(req.body);
-    const result = await this.service.register(dto);
+    const result = await this.service.register({
+      email: dto.email,
+      username: dto.username,
+      password: dto.password,
+      ...(dto.role ? { role: dto.role } : {}),
+    });
     return reply.send(result);
   };
 
