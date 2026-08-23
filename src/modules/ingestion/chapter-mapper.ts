@@ -210,6 +210,31 @@ export class ChapterMapper {
 
     const isFullySpanish = pendingSpanishVols.length === 0;
 
+    // Demographic
+    const demoRaw = attrs.publicationDemographic;
+    const demographic = demoRaw
+      ? demoRaw.charAt(0).toUpperCase() + demoRaw.slice(1)
+      : null;
+
+    // Tags & Genres extraction
+    const tagSet = new Set<string>();
+    if (demographic) {
+      tagSet.add(demographic);
+    }
+
+    if (attrs.tags && Array.isArray(attrs.tags)) {
+      for (const t of attrs.tags) {
+        const enName = t.attributes?.name?.en?.trim();
+        if (enName) {
+          const lower = enName.toLowerCase();
+          const translated = GENRE_TRANSLATIONS[lower] || enName;
+          tagSet.add(translated);
+        }
+      }
+    }
+
+    const tags = Array.from(tagSet);
+
     return {
       externalId: mangaData.id,
       title,
@@ -218,6 +243,8 @@ export class ChapterMapper {
       description,
       status: attrs.status === "completed" ? "FINALIZADO" : "EN_EMISION",
       coverFileName,
+      demographic,
+      tags,
       volumes: volumePlans,
       pendingSpanishVols,
       isFullySpanish,
@@ -236,6 +263,8 @@ export class ChapterMapper {
       externalId: plan.externalId,
       author: plan.author,
       status: plan.status,
+      demographic: plan.demographic,
+      tags: plan.tags,
       totalVolumes: plan.volumes.length,
       spanishVolumesCount: spanishVols.length,
       fallbackVolumesCount: fallbackVols.length,
@@ -251,3 +280,56 @@ export class ChapterMapper {
     };
   }
 }
+
+const GENRE_TRANSLATIONS: Record<string, string> = {
+  action: "Acción",
+  adventure: "Aventura",
+  comedy: "Comedia",
+  drama: "Drama",
+  fantasy: "Fantasía",
+  horror: "Terror",
+  mystery: "Misterio",
+  psychological: "Psicológico",
+  romance: "Romance",
+  "sci-fi": "Ciencia Ficción",
+  "slice of life": "Recuentos de la vida",
+  supernatural: "Sobrenatural",
+  thriller: "Suspenso",
+  demons: "Demonios",
+  magic: "Magia",
+  "martial arts": "Artes Marciales",
+  military: "Militar",
+  monsters: "Monstruos",
+  music: "Música",
+  police: "Policíaco",
+  "post-apocalyptic": "Post-Apocalíptico",
+  reincarnation: "Reencarnación",
+  "school life": "Vida Escolar",
+  space: "Espacio",
+  sports: "Deportes",
+  superheroes: "Superhéroes",
+  survival: "Supervivencia",
+  "time travel": "Viajes en el tiempo",
+  vampires: "Vampiros",
+  "video games": "Videojuegos",
+  villainess: "Villana",
+  zombies: "Zombis",
+  isekai: "Isekai",
+  gore: "Gore",
+  "award winning": "Galardonado",
+  "official colored": "A Color",
+  crime: "Crimen",
+  philosophical: "Filosófico",
+  tragedy: "Tragedia",
+  historical: "Histórico",
+  aliens: "Alienígenas",
+  animals: "Animales",
+  ghosts: "Fantasmas",
+  mafia: "Mafia",
+  ninja: "Ninja",
+  samurai: "Samurái",
+  shounen: "Shounen",
+  seinen: "Seinen",
+  shoujo: "Shoujo",
+  josei: "Josei",
+};

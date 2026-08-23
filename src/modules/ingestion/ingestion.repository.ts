@@ -213,4 +213,48 @@ export class IngestionRepository {
     });
     return new Set(existing.map((e) => e.title.toLowerCase()));
   }
+
+  /**
+   * Upserts tags for MANGA scope and links them to the manga in MangaTag table
+   */
+  async syncMangaTags(mangaId: string, tagNames: string[]) {
+    if (tagNames.length === 0) return [];
+
+    const tagIds: string[] = [];
+
+    for (const rawName of tagNames) {
+      const name = rawName.trim();
+      if (!name) continue;
+      const slug = name.toLowerCase().replace(/\s+/g, "-");
+
+      const tag = await prisma.tag.upsert({
+        where: {
+          scope_slug: {
+            scope: "MANGA",
+            slug,
+          },
+        },
+        create: {
+          scope: "MANGA",
+          name,
+          slug,
+        },
+        update: {},
+      });
+
+      tagIds.push(tag.id);
+    }
+
+    if (tagIds.length > 0) {
+      await prisma.mangaTag.createMany({
+        data: tagIds.map((tagId) => ({
+          mangaId,
+          tagId,
+        })),
+        skipDuplicates: true,
+      });
+    }
+
+    return tagIds;
+  }
 }

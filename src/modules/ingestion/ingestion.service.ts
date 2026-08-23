@@ -75,7 +75,13 @@ export class IngestionService {
       console.log(`[Ingestor] Manga ya existe en BD: "${manga.title}" (ID: ${manga.id})`);
     }
 
-    // 2. Upload Manga Cover if available and not yet set
+    // 2. Sync Genre & Demographic Tags
+    if (plan.tags && plan.tags.length > 0) {
+      await this.repo.syncMangaTags(manga.id, plan.tags);
+      console.log(`[Ingestor] Etiquetas sincronizadas para "${manga.title}": [${plan.tags.join(", ")}]`);
+    }
+
+    // 3. Upload Manga Cover if available and not yet set
     if (plan.coverFileName && !manga.coverPath) {
       notify({ step: `Descargando portada oficial...` });
       try {

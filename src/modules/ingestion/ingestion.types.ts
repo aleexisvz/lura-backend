@@ -14,6 +14,7 @@ export interface MangaDexMangaAttributes {
   status: "ongoing" | "completed" | "hiatus" | "cancelled";
   year?: number;
   contentRating: string;
+  publicationDemographic?: "shounen" | "seinen" | "shoujo" | "josei" | null;
   tags: Array<{
     id: string;
     type: string;
@@ -106,6 +107,8 @@ export interface MangaPlan {
   description: string | null;
   status: "EN_EMISION" | "FINALIZADO";
   coverFileName: string | null;
+  demographic: string | null;
+  tags: string[];
   volumes: VolumePlan[];
   pendingSpanishVols: number[];
   isFullySpanish: boolean;
@@ -116,6 +119,8 @@ export interface DryRunSummary {
   externalId: string;
   author: string | null;
   status: "EN_EMISION" | "FINALIZADO";
+  demographic: string | null;
+  tags: string[];
   totalVolumes: number;
   spanishVolumesCount: number;
   fallbackVolumesCount: number;

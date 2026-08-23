@@ -38,6 +38,8 @@ Ejemplos:
 
     console.log(`\n📖 Manga: "${summary.mangaTitle}"`);
     console.log(`👤 Autor: ${summary.author || "Desconocido"}`);
+    if (summary.demographic) console.log(`🎯 Demografía: ${summary.demographic}`);
+    if (summary.tags.length > 0) console.log(`🏷️ Géneros / Etiquetas: [${summary.tags.join(", ")}]`);
     console.log(`📊 Estado Manga: ${summary.status}`);
     console.log(`🌐 Estado Global de Traducción: ${summary.overallStatus === "COMPLETED" ? "✅ COMPLETO EN ESPAÑOL" : "⚠️ HÍBRIDO (ES + EN Fallback)"}`);
     console.log(`📚 Total de Tomos Detectados: ${summary.totalVolumes}`);
