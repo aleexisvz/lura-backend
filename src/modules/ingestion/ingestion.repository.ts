@@ -183,4 +183,34 @@ export class IngestionRepository {
       },
     });
   }
+
+  /**
+   * Returns a set of externalMangaIds already tracked in the database
+   */
+  async findExistingExternalIds(externalIds: string[]) {
+    const existing = await prisma.mangaIngestionTracker.findMany({
+      where: {
+        externalMangaId: { in: externalIds },
+      },
+      select: {
+        externalMangaId: true,
+      },
+    });
+    return new Set(existing.map((e) => e.externalMangaId));
+  }
+
+  /**
+   * Returns existing mangas by matching titles
+   */
+  async findExistingTitles(titles: string[]) {
+    const existing = await prisma.manga.findMany({
+      where: {
+        title: { in: titles, mode: "insensitive" },
+      },
+      select: {
+        title: true,
+      },
+    });
+    return new Set(existing.map((e) => e.title.toLowerCase()));
+  }
 }

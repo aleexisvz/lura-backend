@@ -168,4 +168,26 @@ export class MangaDexClient {
     const json = await res.json();
     return (json.data || []) as MangaDexChapterData[];
   }
+
+  /**
+   * Auto-Publisher search query: discovers top-rated or most popular completed mangas
+   */
+  async searchDiscoverableMangas(options?: {
+    status?: "completed" | "ongoing";
+    orderBy?: "rating" | "followedCount" | "createdAt" | "latestUploadedChapter";
+    limit?: number;
+  }): Promise<MangaDexMangaData[]> {
+    const status = options?.status ?? "completed";
+    const orderBy = options?.orderBy ?? "followedCount";
+    const limit = options?.limit ?? 20;
+
+    const url = `${this.baseUrl}/manga?status[]=${status}&order[${orderBy}]=desc&contentRating[]=safe&contentRating[]=suggestive&hasAvailableChapters=true&availableTranslatedLanguage[]=es&availableTranslatedLanguage[]=es-la&availableTranslatedLanguage[]=en&limit=${limit}&includes[]=cover_art&includes[]=author&includes[]=artist`;
+
+    const res = await this.rateLimitedFetch(url);
+    if (!res.ok) {
+      throw new Error(`Error buscando mangas descubribles en MangaDex (${res.status}): ${await res.text()}`);
+    }
+    const json = await res.json();
+    return (json.data || []) as MangaDexMangaData[];
+  }
 }
