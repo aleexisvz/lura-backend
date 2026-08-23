@@ -1,3 +1,4 @@
+import { Readable } from "stream";
 import {
   S3Client,
   GetObjectCommand,
@@ -31,7 +32,7 @@ export class CloudStorageService {
     return;
   }
 
-  async saveStream(stream: NodeJS.ReadableStream, filepath: string) {
+  async saveStream(stream: Readable, filepath: string) {
     const upload = new Upload({
       client: this.s3,
       params: {
