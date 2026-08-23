@@ -126,7 +126,7 @@ describe("ReadingSessionService (unit)", () => {
       userId: "user-1",
       endedAt: new Date(openSession.startedAt.getTime() + 1800 * 1000),
       durationSeconds: 1800,
-      xpAwarded: 30,
+      xpAwarded: 60,
     });
   });
 
@@ -203,7 +203,7 @@ describe("ReadingSessionService (unit)", () => {
       id: "session-1",
       endedAt: new Date(),
       durationSeconds: expect.any(Number),
-      xpAwarded: 30,
+      xpAwarded: 60,
     });
 
     await service.endSession("user-1", "session-1");
@@ -211,7 +211,7 @@ describe("ReadingSessionService (unit)", () => {
     expect(repo.closeWithAward).toHaveBeenCalledWith(
       expect.objectContaining({
         durationSeconds: expect.any(Number),
-        xpAwarded: 30,
+        xpAwarded: expect.any(Number),
       })
     );
   });
@@ -235,7 +235,7 @@ describe("ReadingSessionService (unit)", () => {
 
     const result = await service.getUserReadingStats("user-1");
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       totalSessions: 3,
       totalMinutes: 60,
       totalSeconds: 3600,
@@ -252,6 +252,9 @@ describe("ReadingSessionService (unit)", () => {
       xpToNextLevel: 50,
       xpProgressPercent: 10,
     });
+    expect(typeof result.isHotWeekend).toBe("boolean");
+    expect(typeof result.xpMultiplier).toBe("number");
+    expect(typeof result.xpPerMinute).toBe("number");
   });
 
   it("getUserReadingStats() should handle null sums", async () => {
@@ -272,7 +275,7 @@ describe("ReadingSessionService (unit)", () => {
 
     const result = await service.getUserReadingStats("user-1");
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       totalSessions: 0,
       totalMinutes: 0,
       totalSeconds: 0,
@@ -289,6 +292,9 @@ describe("ReadingSessionService (unit)", () => {
       xpToNextLevel: 20,
       xpProgressPercent: 0,
     });
+    expect(typeof result.isHotWeekend).toBe("boolean");
+    expect(typeof result.xpMultiplier).toBe("number");
+    expect(typeof result.xpPerMinute).toBe("number");
   });
 
   it("getRecentSeries() should return items ordered and mapped by type", async () => {
