@@ -39,6 +39,9 @@ type RawVolume = {
   coverPath: string | null;
   status: "UPLOADING" | "READY";
   pagesCount: number;
+  language?: "ES" | "EN";
+  isFallback?: boolean;
+  version?: number;
   createdAt: Date;
 };
 
@@ -310,6 +313,7 @@ export class MangaService {
     }
 
     const pages = await this.repo.findPagesByVolume(volumeId);
+    const versionQuery = volume.version && volume.version > 1 ? `?v=${volume.version}` : "";
 
     return {
       volume: {
@@ -318,11 +322,14 @@ export class MangaService {
         title: volume.title,
         pagesCount: volume.pagesCount,
         status: volume.status,
+        language: volume.language ?? "ES",
+        isFallback: volume.isFallback ?? false,
+        version: volume.version ?? 1,
         coverUrl: this.toCoverUrl(volume.coverPath),
       },
       pages: pages.map((page) => ({
         index: page.index,
-        imageUrl: this.storage.getPublicUrl(this.storage.resolveMangaPagePath(mangaId, volumeId, page.filename)),
+        imageUrl: `${this.storage.getPublicUrl(this.storage.resolveMangaPagePath(mangaId, volumeId, page.filename))}${versionQuery}`,
       })),
     };
   }
@@ -417,6 +424,9 @@ export class MangaService {
       title: volume.title,
       status: volume.status,
       pagesCount: volume.pagesCount,
+      language: volume.language ?? "ES",
+      isFallback: volume.isFallback ?? false,
+      version: volume.version ?? 1,
       coverUrl: this.toCoverUrl(volume.coverPath),
       createdAt: volume.createdAt,
     };
