@@ -17,7 +17,8 @@
     "images:pages:backfill": "tsx scripts/backfill-pages-webp.ts",
     "images:covers:backfill": "tsx scripts/backfill-covers-webp.ts",
     "ingest:manga": "tsx scripts/ingest-manga.ts",
-    "ingest:watcher": "tsx scripts/run-watcher.ts"
+    "ingest:watcher": "tsx scripts/run-watcher.ts",
+    "ingest:publisher": "tsx scripts/run-publisher.ts"
   },
   "keywords": [],
   "author": "",

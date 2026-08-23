@@ -77,7 +77,7 @@ export class PublisherService {
         title,
         author,
         status: attrs.status,
-        year: attrs.year,
+        ...(attrs.year !== undefined ? { year: attrs.year } : {}),
         contentRating: attrs.contentRating,
       });
     }
