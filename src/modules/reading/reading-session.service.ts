@@ -1,7 +1,7 @@
 import { ReadingSessionRepository } from "./reading-session.repository.js";
 import { MangaProgressRepository } from "./manga-progress.repository.js";
 import { VolumeCompletionRepository } from "./volume-completion.repository.js";
-import { buildReadingLevelSnapshot, calculateSessionXp } from "./reading-xp.js";
+import { buildReadingLevelSnapshot, calculateSessionXp, getXpMultiplierInfo } from "./reading-xp.js";
 import { AppError } from "../../shared/errors/AppError.js";
 import { CloudStorageService } from "../../infrastructure/storage/CloudStorageService.js";
 
@@ -47,7 +47,7 @@ export class ReadingSessionService {
             );
             const durationSeconds = Math.min(elapsedSeconds, autoClosedSessionCapSeconds);
             const endedAt = new Date(openSession.startedAt.getTime() + durationSeconds * 1000);
-            const xpAwarded = calculateSessionXp(durationSeconds);
+            const xpAwarded = calculateSessionXp(durationSeconds, { at: endedAt });
 
             await this.repo.closeWithAward({
                 sessionId: openSession.id,
@@ -99,7 +99,7 @@ export class ReadingSessionService {
             Math.floor((now.getTime() - session.startedAt.getTime()) / 1000)
         );
         const durationSeconds = Math.min(elapsedSeconds, autoClosedSessionCapSeconds);
-        const xpAwarded = calculateSessionXp(durationSeconds);
+        const xpAwarded = calculateSessionXp(durationSeconds, { at: now });
 
         return this.repo.closeWithAward({
             sessionId: session.id,
@@ -137,6 +137,7 @@ export class ReadingSessionService {
 
         const totalSeconds = total._sum.durationSeconds ?? 0;
         const levelSnapshot = buildReadingLevelSnapshot(readingXpTotal);
+        const multiplierInfo = getXpMultiplierInfo(new Date());
 
         return {
             totalSessions,
@@ -154,6 +155,10 @@ export class ReadingSessionService {
             xpInLevel: levelSnapshot.xpInLevel,
             xpToNextLevel: levelSnapshot.xpToNextLevel,
             xpProgressPercent: levelSnapshot.xpProgressPercent,
+            isHotWeekend: multiplierInfo.isHotWeekend,
+            xpMultiplier: multiplierInfo.multiplier,
+            activeXpEvent: multiplierInfo.activeXpEvent,
+            xpPerMinute: multiplierInfo.xpPerMinute,
         };
     }
 

@@ -6,6 +6,8 @@ type SessionForBackfill = {
   id: string;
   durationSeconds: number | null;
   xpAwarded: number | null;
+  endedAt: Date | null;
+  startedAt: Date;
 };
 
 async function runBackfill() {
@@ -19,6 +21,8 @@ async function runBackfill() {
       id: true,
       durationSeconds: true,
       xpAwarded: true,
+      endedAt: true,
+      startedAt: true,
     },
   });
 
@@ -29,7 +33,9 @@ async function runBackfill() {
       continue;
     }
 
-    const xpAwarded = calculateSessionXp(session.durationSeconds ?? 0);
+    const xpAwarded = calculateSessionXp(session.durationSeconds ?? 0, {
+      at: session.endedAt ?? session.startedAt,
+    });
     await prisma.readingSession.update({
       where: {
         id: session.id,
