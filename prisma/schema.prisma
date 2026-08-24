@@ -55,6 +55,7 @@ model Manga {
   volumes   Volume[]
   mangaTags MangaTag[]
   mangaProgress MangaProgress[]
+  ingestionTracker MangaIngestionTracker?
 
   createdAt DateTime @default(now())
 }
@@ -115,14 +116,28 @@ model BookTag {
   @@index([tagId])
 }
 
+enum ContentLanguage {
+  ES
+  EN
+}
+
+enum IngestionStatus {
+  COMPLETED
+  HYBRID
+  FAILED
+}
+
 model Volume {
-  id         String   @id @default(cuid())
+  id         String          @id @default(cuid())
   mangaId    String
   number     Int
   title      String?
   coverPath  String?
   status     VolumeStatus
-  pagesCount Int      @default(0)
+  pagesCount Int             @default(0)
+  language   ContentLanguage @default(ES)
+  isFallback Boolean         @default(false)
+  version    Int             @default(1)
 
   pages             Page[]
   volumeCompletions VolumeCompletion[]
@@ -130,7 +145,9 @@ model Volume {
 
   createdAt  DateTime @default(now())
 
-  Manga Manga @relation(fields: [mangaId], references: [id])
+  Manga Manga @relation(fields: [mangaId], references: [id], onDelete: Cascade)
+
+  @@unique([mangaId, number])
 }
 
 model Page {
@@ -139,7 +156,7 @@ model Page {
   index    Int
   filename String
 
-  Volume Volume @relation(fields: [volumeId], references: [id])
+  Volume Volume @relation(fields: [volumeId], references: [id], onDelete: Cascade)
 
   @@unique([volumeId, index])
 }
@@ -147,6 +164,20 @@ model Page {
 enum VolumeStatus {
   UPLOADING
   READY
+}
+
+model MangaIngestionTracker {
+  id                 String          @id @default(cuid())
+  mangaId            String          @unique
+  sourceProvider     String          @default("MANGADEX")
+  externalMangaId    String
+  status             IngestionStatus @default(COMPLETED)
+  pendingSpanishVols Int[]           @default([])
+  lastCheckedAt      DateTime        @default(now())
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  Manga Manga @relation(fields: [mangaId], references: [id], onDelete: Cascade)
 }
 
 model MangaProgress {
