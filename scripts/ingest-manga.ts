@@ -6,7 +6,9 @@ import { CloudStorageService } from "../src/infrastructure/storage/CloudStorageS
 async function main() {
   const args = process.argv.slice(2);
   const isDryRun = args.includes("--dry-run");
-  const targetArg = args.find((a) => !a.startsWith("--"));
+  const isForce = args.includes("--force");
+  const nonFlagArgs = args.filter((a) => !a.startsWith("--"));
+  const targetArg = nonFlagArgs.join(" ").trim().replace(/^["']|["']$/g, "");
 
   if (!targetArg) {
     console.log(`
@@ -14,11 +16,12 @@ async function main() {
   Lura Autonomous Manga Ingestor (ETL + Fallback)
 ======================================================
 Uso:
-  npm run ingest:manga <URL_o_ID_MangaDex> [--dry-run]
+  npm run ingest:manga <Título_o_URL_o_ID_MangaDex> [--dry-run] [--force]
 
 Ejemplos:
-  npm run ingest:manga https://mangadex.org/title/a1c7c817-4e59-42b5-bd26-5214772f3f71 -- --dry-run
-  npm run ingest:manga a1c7c817-4e59-42b5-bd26-5214772f3f71
+  npm run ingest:manga "Chainsaw Man" -- --dry-run
+  npm run ingest:manga "Yamada-kun to Lv999 no Koi wo Suru"
+  npm run ingest:manga https://mangadex.org/title/a77742b1-befd-49a4-bff5-1ad4e6b0ef7b
 ======================================================
 `);
     process.exit(1);
@@ -67,6 +70,7 @@ Ejemplos:
     console.log("======================================================\n");
 
     const result = await service.ingest(targetArg, {
+      force: isForce,
       onProgress: (p) => {
         if (p.currentVolume && p.totalVolumes) {
           console.log(`>> [${p.currentVolume}/${p.totalVolumes}] ${p.step}`);

@@ -190,4 +190,19 @@ export class MangaDexClient {
     const json = await res.json();
     return (json.data || []) as MangaDexMangaData[];
   }
+
+  /**
+   * Searches MangaDex by title and returns the closest match
+   */
+  async searchMangaByTitle(title: string): Promise<MangaDexMangaData | null> {
+    const url = `${this.baseUrl}/manga?title=${encodeURIComponent(title.trim())}&limit=5&includes[]=cover_art&includes[]=author&includes[]=artist`;
+    const res = await this.rateLimitedFetch(url);
+    if (!res.ok) {
+      throw new Error(`Error buscando manga por título en MangaDex (${res.status}): ${await res.text()}`);
+    }
+    const json = await res.json();
+    const list = (json.data || []) as MangaDexMangaData[];
+    if (list.length === 0) return null;
+    return list[0] ?? null;
+  }
 }

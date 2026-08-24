@@ -17,8 +17,18 @@ export class IngestionService {
   /**
    * Generates a MangaPlan and DryRunSummary without downloading/uploading images
    */
-  async analyze(mangaIdOrUrl: string) {
-    const externalId = MangaDexClient.extractMangaId(mangaIdOrUrl);
+  async analyze(mangaIdOrUrlOrTitle: string) {
+    let externalId: string;
+    try {
+      externalId = MangaDexClient.extractMangaId(mangaIdOrUrlOrTitle);
+    } catch {
+      console.log(`[Ingestor] Buscando en MangaDex por título: "${mangaIdOrUrlOrTitle}"...`);
+      const matched = await this.mangadex.searchMangaByTitle(mangaIdOrUrlOrTitle);
+      if (!matched) {
+        throw new Error(`No se encontró ningún manga en MangaDex con el término: "${mangaIdOrUrlOrTitle}"`);
+      }
+      externalId = matched.id;
+    }
 
     console.log(`[Ingestor] Consultando metadatos para ID: ${externalId}...`);
     const mangaData = await this.mangadex.getManga(externalId);
@@ -37,11 +47,12 @@ export class IngestionService {
   }
 
   /**
-   * Ingests a complete manga with hybrid fallback directly into R2 and DB
+   * Ingests or updates a manga with hybrid fallback directly into R2 and DB
    */
   async ingest(
-    mangaIdOrUrl: string,
+    mangaIdOrUrlOrTitle: string,
     options?: {
+      force?: boolean;
       onProgress?: (progress: {
         step: string;
         currentVolume?: number;
@@ -51,7 +62,7 @@ export class IngestionService {
       }) => void;
     }
   ) {
-    const { plan } = await this.analyze(mangaIdOrUrl);
+    const { plan } = await this.analyze(mangaIdOrUrlOrTitle);
     const notify = options?.onProgress || (() => {});
 
     notify({ step: `Iniciando ingesta de "${plan.title}" (${plan.volumes.length} tomos)...` });
@@ -72,7 +83,13 @@ export class IngestionService {
       });
       console.log(`[Ingestor] Manga creado en BD: "${manga.title}" (ID: ${manga.id})`);
     } else {
-      console.log(`[Ingestor] Manga ya existe en BD: "${manga.title}" (ID: ${manga.id})`);
+      console.log(`[Ingestor] Manga ya existe en BD: "${manga.title}" (ID: ${manga.id}). Actualizando metadatos y rellenando tomos nuevos...`);
+      await this.repo.updateMangaMetadata(manga.id, {
+        author: plan.author ?? manga.author,
+        description: plan.description ?? manga.description,
+        titleKanji: plan.titleKanji ?? manga.titleKanji,
+        status: plan.status,
+      });
     }
 
     // 2. Sync Genre & Demographic Tags
@@ -104,7 +121,7 @@ export class IngestionService {
       }
     }
 
-    // 3. Process Volumes
+    // 4. Process / Backfill Volumes
     for (const [i, volPlan] of plan.volumes.entries()) {
       const volIndex = i + 1;
 
@@ -114,10 +131,10 @@ export class IngestionService {
         totalVolumes: plan.volumes.length,
       });
 
-      await this.processVolume(manga.id, volPlan, plan.externalId, notify);
+      await this.processVolume(manga.id, volPlan, plan.externalId, notify, options);
     }
 
-    // 4. Register in Tracker
+    // 5. Register in Tracker
     const trackerStatus = plan.isFullySpanish ? "COMPLETED" : "HYBRID";
     await this.repo.upsertTracker({
       mangaId: manga.id,
@@ -127,7 +144,7 @@ export class IngestionService {
     });
 
     notify({
-      step: `Ingesta completada con éxito. Estado: ${trackerStatus}.`,
+      step: `Ingesta/Actualización completada con éxito. Estado: ${trackerStatus}.`,
       totalVolumes: plan.volumes.length,
     });
 
@@ -147,7 +164,8 @@ export class IngestionService {
     mangaId: string,
     volPlan: VolumePlan,
     externalMangaId: string,
-    notify?: (progress: any) => void
+    notify?: (progress: any) => void,
+    options?: { force?: boolean }
   ) {
     // 1. Find or create volume in DB
     let volume = await this.repo.findVolumeByMangaAndNumber(mangaId, volPlan.volumeNumber);
@@ -161,6 +179,17 @@ export class IngestionService {
         language: volPlan.language,
         isFallback: volPlan.isFallback,
       });
+    } else if (
+      volume.status === "READY" &&
+      volume.pagesCount > 0 &&
+      volume.language === volPlan.language &&
+      volume.isFallback === volPlan.isFallback &&
+      !options?.force
+    ) {
+      console.log(
+        `[Ingestor] Tomo ${volPlan.volumeNumber} ya está listo en BD (${volume.pagesCount} páginas). Omitiendo re-descarga.`
+      );
+      return;
     }
 
     // 2. Fetch page list from MangaDex@Home for all chapters in this volume

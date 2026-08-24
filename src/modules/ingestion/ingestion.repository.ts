@@ -46,6 +46,26 @@ export class IngestionRepository {
     });
   }
 
+  async updateMangaMetadata(
+    mangaId: string,
+    data: {
+      titleKanji?: string | null;
+      author?: string | null;
+      description?: string | null;
+      status?: MangaStatus;
+    }
+  ) {
+    return prisma.manga.update({
+      where: { id: mangaId },
+      data: {
+        ...(data.titleKanji !== undefined ? { titleKanji: data.titleKanji } : {}),
+        ...(data.author !== undefined ? { author: data.author } : {}),
+        ...(data.description !== undefined ? { description: data.description } : {}),
+        ...(data.status !== undefined ? { status: data.status } : {}),
+      },
+    });
+  }
+
   async findVolumeByMangaAndNumber(mangaId: string, number: number) {
     return prisma.volume.findUnique({
       where: {
