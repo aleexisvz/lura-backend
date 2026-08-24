@@ -218,6 +218,9 @@ describe("MangaService (unit)", () => {
         pagesCount: 3,
         status: "READY",
         coverUrl: null,
+        language: "ES",
+        isFallback: false,
+        version: 1,
       });
       expect(result.pages).toEqual([
         { index: 1, imageUrl: "https://cdn.example.com/manga/m-1/volumes/v-1/pages/001.webp" },

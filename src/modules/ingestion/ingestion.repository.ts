@@ -170,6 +170,71 @@ export class IngestionRepository {
     });
   }
 
+  async deleteVolume(volumeId: string) {
+    return prisma.$transaction(async (tx) => {
+      await tx.mangaProgress.deleteMany({ where: { volumeId } });
+      await tx.volumeCompletion.deleteMany({ where: { volumeId } });
+      await tx.page.deleteMany({ where: { volumeId } });
+      return tx.volume.delete({ where: { id: volumeId } });
+    });
+  }
+
+  async deleteManga(mangaId: string) {
+    return prisma.$transaction(async (tx) => {
+      await tx.mangaProgress.deleteMany({ where: { mangaId } });
+      await tx.volumeCompletion.deleteMany({ where: { mangaId } });
+      await tx.mangaTag.deleteMany({ where: { mangaId } });
+      await tx.mangaIngestionTracker.deleteMany({ where: { mangaId } });
+
+      const volumes = await tx.volume.findMany({ where: { mangaId }, select: { id: true } });
+      const volIds = volumes.map((v) => v.id);
+      if (volIds.length > 0) {
+        await tx.page.deleteMany({ where: { volumeId: { in: volIds } } });
+        await tx.volume.deleteMany({ where: { mangaId } });
+      }
+
+      return tx.manga.delete({ where: { id: mangaId } });
+    });
+  }
+
+  async findAllTrackers() {
+    return prisma.mangaIngestionTracker.findMany({
+      include: {
+        Manga: {
+          include: {
+            volumes: {
+              orderBy: {
+                number: "asc",
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async findActiveTrackers() {
+    return prisma.mangaIngestionTracker.findMany({
+      where: {
+        OR: [
+          { status: "HYBRID" },
+          { Manga: { status: "EN_EMISION" } },
+        ],
+      },
+      include: {
+        Manga: {
+          include: {
+            volumes: {
+              orderBy: {
+                number: "asc",
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
   async updateTrackerStatus(
     trackerId: string,
     data: {

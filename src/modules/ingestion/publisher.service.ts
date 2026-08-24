@@ -155,7 +155,8 @@ export class PublisherService {
         );
       } catch (err) {
         console.error(
-          `[Publisher] ❌ Error publicando "${candidate.title}": ${(err as Error).message}`
+          `[Publisher] ❌ Error publicando "${candidate.title}":`,
+          err instanceof Error ? err.message : err
         );
       }
     }

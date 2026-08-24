@@ -134,24 +134,37 @@ export class MangaDexClient {
    */
   async downloadImageBuffer(url: string, retries = 3): Promise<Buffer> {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
+
       const res = await fetch(url, {
+        signal: controller.signal,
         headers: {
           "User-Agent": "Lura-Reader/1.0",
         },
       });
+      clearTimeout(timeoutId);
 
       if (!res.ok) {
-        throw new Error(`Fallo descargando imagen (${res.status}) desde ${url}`);
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       }
 
       const arrayBuffer = await res.arrayBuffer();
-      return Buffer.from(arrayBuffer);
+      const buffer = Buffer.from(arrayBuffer);
+
+      if (buffer.length < 50) {
+        throw new Error(`Buffer de imagen demasiado pequeño o corrupto (${buffer.length} bytes)`);
+      }
+
+      return buffer;
     } catch (err) {
       if (retries > 0) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const backoffMs = (4 - retries) * 1500;
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
         return this.downloadImageBuffer(url, retries - 1);
       }
-      throw err;
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`Error descargando imagen desde ${url}: ${msg}`);
     }
   }
 

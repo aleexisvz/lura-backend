@@ -133,7 +133,43 @@ export class CloudStorageService {
       new DeleteObjectsCommand({
         Bucket: this.bucket,
         Delete: {
-          Objects: listedObjects.Contents.map((obj) => ({ Key: obj.Key })),
+          Objects: listedObjects.Contents.filter((obj) => obj.Key).map((obj) => ({ Key: obj.Key! })),
+        },
+      })
+    );
+  }
+
+  async deleteVolumeFiles(mangaId: string, volumeId: string) {
+    const prefix = this.normalizeKey(`manga/${mangaId}/volumes/${volumeId}`);
+    const listedObjects = await this.s3.send(
+      new ListObjectsV2Command({ Bucket: this.bucket, Prefix: prefix })
+    );
+
+    if (!listedObjects.Contents || listedObjects.Contents.length === 0) return;
+
+    await this.s3.send(
+      new DeleteObjectsCommand({
+        Bucket: this.bucket,
+        Delete: {
+          Objects: listedObjects.Contents.filter((obj) => obj.Key).map((obj) => ({ Key: obj.Key! })),
+        },
+      })
+    );
+  }
+
+  async deleteMangaFiles(mangaId: string) {
+    const prefix = this.normalizeKey(`manga/${mangaId}`);
+    const listedObjects = await this.s3.send(
+      new ListObjectsV2Command({ Bucket: this.bucket, Prefix: prefix })
+    );
+
+    if (!listedObjects.Contents || listedObjects.Contents.length === 0) return;
+
+    await this.s3.send(
+      new DeleteObjectsCommand({
+        Bucket: this.bucket,
+        Delete: {
+          Objects: listedObjects.Contents.filter((obj) => obj.Key).map((obj) => ({ Key: obj.Key! })),
         },
       })
     );

@@ -49,6 +49,13 @@ Ejemplos:
     console.log(`   - En Español: ${summary.spanishVolumesCount}`);
     console.log(`   - En Inglés (Fallback): ${summary.fallbackVolumesCount} ${summary.fallbackVolumeNumbers.length > 0 ? `(Tomos: [${summary.fallbackVolumeNumbers.join(", ")}])` : ""}`);
 
+    if (summary.totalVolumes === 0) {
+      console.log(`\n⚠️ ATENCIÓN: No se encontraron volúmenes continuos disponibles comenzando desde el Tomo 1.`);
+      console.log(`   Lura requiere que los capítulos/volúmenes estén disponibles desde el inicio (Tomo 1 en adelante).`);
+      console.log(`   Ingesta omitida para evitar mangas incompletos o sin tomos iniciales.\n`);
+      process.exit(0);
+    }
+
     console.log("\n--- Desglose de Tomos ---");
     console.table(
       summary.volumes.map((v) => ({

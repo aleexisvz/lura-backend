@@ -15,7 +15,7 @@ export function initIngestionCrons() {
   const storage = new CloudStorageService();
   const ingestionService = new IngestionService(mangadex, repo, storage);
   const publisherService = new PublisherService(mangadex, repo, ingestionService);
-  const watcherService = new WatcherService(mangadex, repo, ingestionService);
+  const watcherService = new WatcherService(mangadex, repo, ingestionService, storage);
 
   console.log("[Crons] Inicializando crons de Ingesta Autónoma (Publisher & Watcher)...");
 

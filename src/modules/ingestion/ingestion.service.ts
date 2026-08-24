@@ -6,6 +6,7 @@ import { IngestionRepository } from "./ingestion.repository.js";
 import { CloudStorageService } from "../../infrastructure/storage/CloudStorageService.js";
 import { ChapterMapper } from "./chapter-mapper.js";
 import type { MangaPlan, VolumePlan } from "./ingestion.types.js";
+import { AppError } from "../../shared/errors/AppError.js";
 
 export class IngestionService {
   constructor(
@@ -63,6 +64,15 @@ export class IngestionService {
     }
   ) {
     const { plan } = await this.analyze(mangaIdOrUrlOrTitle);
+
+    if (plan.volumes.length === 0) {
+      throw new AppError({
+        code: "VALIDATION_ERROR",
+        statusCode: 400,
+        message: `No se puede importar el manga "${plan.title}" porque no cuenta con los primeros volúmenes disponibles (Tomo 1 en adelante de forma continua).`,
+      });
+    }
+
     const notify = options?.onProgress || (() => {});
 
     notify({ step: `Iniciando ingesta de "${plan.title}" (${plan.volumes.length} tomos)...` });

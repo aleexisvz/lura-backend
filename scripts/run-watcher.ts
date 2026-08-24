@@ -13,19 +13,26 @@ async function main() {
   const repo = new IngestionRepository();
   const storage = new CloudStorageService();
   const ingestionService = new IngestionService(mangadex, repo, storage);
-  const watcherService = new WatcherService(mangadex, repo, ingestionService);
+  const watcherService = new WatcherService(mangadex, repo, ingestionService, storage);
 
   try {
     const result = await watcherService.checkAndPatch();
     console.log("\n--- Resultado de la ejecución ---");
-    console.log(`Mangas revisados: ${result.checkedTrackers}`);
-    console.log(`Tomos actualizados a Español: ${result.patchedVolumes.length}`);
-    if (result.patchedVolumes.length > 0) {
+    console.log(`Mangas revisados/auditados: ${result.checkedTrackers}`);
+    console.log(`Acciones realizadas: ${result.actions.length}`);
+    if (result.actions.length > 0) {
       console.table(
-        result.patchedVolumes.map((pv) => ({
-          "Manga": pv.mangaTitle,
-          "Tomo": `Tomo ${pv.volumeNumber}`,
-          "Estado": "✅ Actualizado a Español y CDN cache refrescado",
+        result.actions.map((act) => ({
+          "Manga": act.mangaTitle,
+          "Tomo": act.volumeNumber ? `Tomo ${act.volumeNumber}` : "-",
+          "Tipo de Acción":
+            act.type === "DELETED_INVALID_MANGA"
+              ? "🗑️ Manga eliminado (no tenía Tomo 1)"
+              : act.type === "DELETED_DISCONNECTED_VOLUME"
+              ? "🗑️ Tomo no contiguo eliminado"
+              : act.type === "NEW_VOLUME"
+              ? "📥 Nuevo tomo contiguo descargado"
+              : "✅ Tomo actualizado a Español",
         }))
       );
     }
