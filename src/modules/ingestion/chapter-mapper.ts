@@ -48,6 +48,7 @@ export class ChapterMapper {
 
     const volumePlans: VolumePlan[] = [];
     const pendingSpanishVols: number[] = [];
+    const coveredChapters = new Set<string>();
 
     // Filter volume keys and sort numerically
     const numericVolumeKeys = volumeKeys
@@ -71,6 +72,7 @@ export class ChapterMapper {
         if (hasAllSpanish) {
           const chapters: ChapterPlan[] = requiredChapters.map((chNum) => {
             const ch = esChaptersMap.get(chNum)!;
+            coveredChapters.add(chNum);
             return {
               id: ch.id,
               chapterNumber: chNum,
@@ -88,7 +90,7 @@ export class ChapterMapper {
             chapters,
           });
         } else {
-          // Fallback to English
+          // Check English fallback chapters
           const enChapters: ChapterPlan[] = [];
           for (const chNum of requiredChapters) {
             const ch = enChaptersMap.get(chNum);
@@ -104,6 +106,7 @@ export class ChapterMapper {
           }
 
           if (enChapters.length > 0) {
+            for (const c of enChapters) coveredChapters.add(c.chapterNumber);
             volumePlans.push({
               volumeNumber: volNum,
               volumeTitle: `Tomo ${volNum}`,
@@ -112,19 +115,52 @@ export class ChapterMapper {
               chapters: enChapters,
             });
             pendingSpanishVols.push(volNum);
+          } else {
+            // If English is not available either, take whatever Spanish chapters exist
+            const partialEsChapters: ChapterPlan[] = [];
+            for (const chNum of requiredChapters) {
+              const ch = esChaptersMap.get(chNum);
+              if (ch) {
+                partialEsChapters.push({
+                  id: ch.id,
+                  chapterNumber: chNum,
+                  title: ch.attributes.title,
+                  language: ch.attributes.translatedLanguage,
+                  pagesCount: ch.attributes.pages || 0,
+                });
+              }
+            }
+
+            if (partialEsChapters.length > 0) {
+              for (const c of partialEsChapters) coveredChapters.add(c.chapterNumber);
+              volumePlans.push({
+                volumeNumber: volNum,
+                volumeTitle: `Tomo ${volNum}`,
+                language: "ES",
+                isFallback: false,
+                chapters: partialEsChapters,
+              });
+            }
           }
         }
       }
-    } else {
-      // Fallback if manga has no volume groupings in aggregate ("none" only)
-      // Group chapters into synthetic volumes of 8 chapters each
-      const allUniqueChapters = Array.from(
-        new Set([...esChaptersMap.keys(), ...enChaptersMap.keys()])
-      ).sort((a, b) => Number(a) - Number(b));
+    }
+
+    // Process any unassigned chapters (from volume "none" or extras)
+    const allUniqueChapters = Array.from(
+      new Set([...esChaptersMap.keys(), ...enChaptersMap.keys()])
+    )
+      .filter((chNum) => !coveredChapters.has(chNum))
+      .sort((a, b) => Number(a) - Number(b));
+
+    if (allUniqueChapters.length > 0) {
+      let nextVolNum =
+        volumePlans.length > 0
+          ? Math.max(...volumePlans.map((v) => v.volumeNumber)) + 1
+          : 1;
 
       const CHUNK_SIZE = 8;
       for (let i = 0; i < allUniqueChapters.length; i += CHUNK_SIZE) {
-        const volNum = Math.floor(i / CHUNK_SIZE) + 1;
         const chunk = allUniqueChapters.slice(i, i + CHUNK_SIZE);
         const hasAllSpanish = chunk.every((chNum) => esChaptersMap.has(chNum));
 
@@ -141,8 +177,8 @@ export class ChapterMapper {
           });
 
           volumePlans.push({
-            volumeNumber: volNum,
-            volumeTitle: `Tomo ${volNum}`,
+            volumeNumber: nextVolNum,
+            volumeTitle: `Tomo ${nextVolNum}`,
             language: "ES",
             isFallback: false,
             chapters,
@@ -164,15 +200,39 @@ export class ChapterMapper {
 
           if (enChapters.length > 0) {
             volumePlans.push({
-              volumeNumber: volNum,
-              volumeTitle: `Tomo ${volNum}`,
+              volumeNumber: nextVolNum,
+              volumeTitle: `Tomo ${nextVolNum}`,
               language: "EN",
               isFallback: true,
               chapters: enChapters,
             });
-            pendingSpanishVols.push(volNum);
+            pendingSpanishVols.push(nextVolNum);
+          } else {
+            const partialEs: ChapterPlan[] = [];
+            for (const chNum of chunk) {
+              const ch = esChaptersMap.get(chNum);
+              if (ch) {
+                partialEs.push({
+                  id: ch.id,
+                  chapterNumber: chNum,
+                  title: ch.attributes.title,
+                  language: ch.attributes.translatedLanguage,
+                  pagesCount: ch.attributes.pages || 0,
+                });
+              }
+            }
+            if (partialEs.length > 0) {
+              volumePlans.push({
+                volumeNumber: nextVolNum,
+                volumeTitle: `Tomo ${nextVolNum}`,
+                language: "ES",
+                isFallback: false,
+                chapters: partialEs,
+              });
+            }
           }
         }
+        nextVolNum++;
       }
     }
 

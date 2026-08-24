@@ -67,19 +67,29 @@ export class PublisherService {
 
       if (existingTitles.has(title.toLowerCase())) continue;
 
-      const authorRel = m.relationships.find(
-        (r) => r.type === "author" || r.type === "artist"
-      );
-      const author = authorRel?.attributes?.name || null;
+      // Verify that this manga actually has downloadable hosted volumes in ES or EN
+      try {
+        const { plan } = await this.ingestionService.analyze(m.id);
+        if (plan.volumes.length === 0) {
+          continue; // skip external-only redirects
+        }
 
-      candidates.push({
-        externalId: m.id,
-        title,
-        author,
-        status: attrs.status,
-        ...(attrs.year !== undefined ? { year: attrs.year } : {}),
-        contentRating: attrs.contentRating,
-      });
+        const authorRel = m.relationships.find(
+          (r) => r.type === "author" || r.type === "artist"
+        );
+        const author = authorRel?.attributes?.name || null;
+
+        candidates.push({
+          externalId: m.id,
+          title,
+          author,
+          status: attrs.status,
+          ...(attrs.year !== undefined ? { year: attrs.year } : {}),
+          contentRating: attrs.contentRating,
+        });
+      } catch {
+        continue;
+      }
     }
 
     return candidates;
