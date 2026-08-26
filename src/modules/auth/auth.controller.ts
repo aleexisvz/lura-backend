@@ -7,9 +7,9 @@ const RegisterSchema = z.object({
   username: z
     .string()
     .trim()
-    .min(3)
-    .max(32)
-    .regex(/^[a-zA-Z0-9_]+$/),
+    .min(2, "Username must be at least 2 characters")
+    .max(32, "Username cannot exceed 32 characters")
+    .regex(/^[\p{L}\p{N}_-]+$/u, "Username can only contain letters, numbers, Kanji/Japanese characters, underscores, and hyphens"),
   password: z.string().min(6),
   role: z.enum(["USER", "ADMIN"]).optional(),
 });

@@ -1,7 +1,7 @@
 import path from "node:path";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { CloudStorageService } from "../../infrastructure/storage/CloudStorageService.js";
-import { badRequest, notFound } from "../../shared/errors/error-factory.js";
+import { badRequest, conflict, notFound } from "../../shared/errors/error-factory.js";
 import { getImageContentType } from "../../shared/utils/get-image-content-type.js";
 import { buildReadingLevelSnapshot } from "../reading/reading-xp.js";
 import { UsersRepository } from "./users.repository.js";
@@ -22,6 +22,29 @@ export class UsersService {
     }
 
     return this.toPublicUser(user);
+  }
+
+  async updateUsername(userId: string, rawUsername: string): Promise<PublicUserDTO> {
+    const user = await this.repo.findUserById(userId);
+    if (!user) {
+      throw notFound("USER_NOT_FOUND", "User not found");
+    }
+
+    const username = rawUsername.trim();
+
+    if (username.toLowerCase() === user.username.toLowerCase()) {
+      if (username === user.username) {
+        return this.toPublicUser(user);
+      }
+    } else {
+      const existing = await this.repo.findUserByUsername(username);
+      if (existing && existing.id !== userId) {
+        throw conflict("USERNAME_ALREADY_IN_USE", "Username already in use");
+      }
+    }
+
+    const updated = await this.repo.updateUsername(userId, username);
+    return this.toPublicUser(updated);
   }
 
   async uploadProfileImage(req: FastifyRequest, userId: string) {
