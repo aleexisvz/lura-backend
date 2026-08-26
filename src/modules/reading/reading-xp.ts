@@ -1,7 +1,7 @@
 import { env } from "../../config/env.js";
 
 const XP_BASE_TO_NEXT_LEVEL = 20;
-const XP_INCREMENT_PER_LEVEL = 10;
+const XP_INCREMENT_PER_LEVEL = 15;
 
 export type ReadingLevelSnapshot = {
   readingLevel: number;

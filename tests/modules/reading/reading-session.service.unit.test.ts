@@ -246,11 +246,11 @@ describe("ReadingSessionService (unit)", () => {
       totalMangasRead: 2,
       totalSeriesRead: 2,
       totalBooksRead: 2,
-      readingLevel: 4,
+      readingLevel: 3,
       readingXpTotal: 95,
-      xpInLevel: 5,
+      xpInLevel: 40,
       xpToNextLevel: 50,
-      xpProgressPercent: 10,
+      xpProgressPercent: 80,
     });
     expect(typeof result.isHotWeekend).toBe("boolean");
     expect(typeof result.xpMultiplier).toBe("number");

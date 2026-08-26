@@ -61,8 +61,8 @@ describe("reading-xp (unit)", () => {
 
   it("getXpToNextLevel() should grow linearly", () => {
     expect(getXpToNextLevel(1)).toBe(20);
-    expect(getXpToNextLevel(2)).toBe(30);
-    expect(getXpToNextLevel(5)).toBe(60);
+    expect(getXpToNextLevel(2)).toBe(35);
+    expect(getXpToNextLevel(5)).toBe(80);
   });
 
   it("buildReadingLevelSnapshot() should derive level progression from total XP", () => {
@@ -74,20 +74,28 @@ describe("reading-xp (unit)", () => {
       xpProgressPercent: 0,
     });
 
-    expect(buildReadingLevelSnapshot(50)).toMatchObject({
+    expect(buildReadingLevelSnapshot(55)).toMatchObject({
       readingLevel: 3,
-      readingXpTotal: 50,
+      readingXpTotal: 55,
       xpInLevel: 0,
-      xpToNextLevel: 40,
+      xpToNextLevel: 50,
       xpProgressPercent: 0,
     });
 
     expect(buildReadingLevelSnapshot(95)).toMatchObject({
-      readingLevel: 4,
+      readingLevel: 3,
       readingXpTotal: 95,
-      xpInLevel: 5,
+      xpInLevel: 40,
       xpToNextLevel: 50,
-      xpProgressPercent: 10,
+      xpProgressPercent: 80,
+    });
+
+    expect(buildReadingLevelSnapshot(110)).toMatchObject({
+      readingLevel: 4,
+      readingXpTotal: 110,
+      xpInLevel: 5,
+      xpToNextLevel: 65,
+      xpProgressPercent: 7,
     });
   });
 });
