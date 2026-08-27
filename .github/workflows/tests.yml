@@ -30,6 +30,11 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/lura_test?schema=public
       JWT_SECRET: github-actions-jwt-secret-12345
       JWT_EXPIRES_IN: 15m
+      S3_ENDPOINT: https://mock-r2.cloudflarestorage.com
+      S3_ACCESS_KEY: test-access-key
+      S3_SECRET_KEY: test-secret-key
+      S3_BUCKET_NAME: lura-test-bucket
+      S3_PUBLIC_URL: https://cdn.test.lura.app
 
     steps:
       - name: Checkout repository
