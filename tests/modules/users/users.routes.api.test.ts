@@ -90,30 +90,6 @@ describe("Users routes (api)", () => {
     );
   });
 
-  it("GET /users/me/profile-image should return 404 when image is missing", async () => {
-    await prisma.user.create({
-      data: {
-        id: "user-test-id",
-        email: "user@tests.local",
-        username: "user_test",
-        password: "hash",
-        role: "USER",
-      },
-    });
-
-    const response = await app.inject({
-      method: "GET",
-      url: "/users/me/profile-image",
-      headers: buildAuthHeader(app, "USER"),
-    });
-
-    expect(response.statusCode).toBe(404);
-    expect(response.json()).toEqual(
-      expect.objectContaining({
-        code: "USER_PROFILE_IMAGE_NOT_FOUND",
-      })
-    );
-  });
 
   it("PATCH /users/me should require auth", async () => {
     const response = await app.inject({

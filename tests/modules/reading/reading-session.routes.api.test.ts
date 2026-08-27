@@ -151,6 +151,10 @@ describe("ReadingSession routes (api)", () => {
       xpInLevel: 0,
       xpToNextLevel: 20,
       xpProgressPercent: 0,
+      activeXpEvent: null,
+      isHotWeekend: false,
+      xpMultiplier: 1,
+      xpPerMinute: 2,
     });
   });
 

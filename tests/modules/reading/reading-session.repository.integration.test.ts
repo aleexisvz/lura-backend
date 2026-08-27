@@ -148,7 +148,14 @@ describe("ReadingSessionRepository (integration)", () => {
       contentId: "manga-1",
       startedAt: new Date("2026-03-18T10:00:00Z"),
     });
-    await repo.updateEnd(s1.id, new Date("2026-03-18T10:30:00Z"), 1800);
+    await repo.closeWithAward({
+      sessionId: s1.id,
+      userId,
+      endedAt: new Date("2026-03-18T10:30:00Z"),
+      durationSeconds: 1800,
+      xpAwarded: 60,
+      contentType: "MANGA",
+    });
 
     const s2 = await repo.create({
       userId,
@@ -156,7 +163,14 @@ describe("ReadingSessionRepository (integration)", () => {
       contentId: "book-1",
       startedAt: new Date("2026-03-18T11:00:00Z"),
     });
-    await repo.updateEnd(s2.id, new Date("2026-03-18T11:15:00Z"), 900);
+    await repo.closeWithAward({
+      sessionId: s2.id,
+      userId,
+      endedAt: new Date("2026-03-18T11:15:00Z"),
+      durationSeconds: 900,
+      xpAwarded: 30,
+      contentType: "BOOK",
+    });
 
     const result = await repo.getTotalReadingTimeByUser(userId);
 
@@ -170,7 +184,14 @@ describe("ReadingSessionRepository (integration)", () => {
       contentId: "manga-1",
       startedAt: new Date("2026-03-18T10:00:00Z"),
     });
-    await repo.updateEnd(s1.id, new Date("2026-03-18T10:30:00Z"), 1800);
+    await repo.closeWithAward({
+      sessionId: s1.id,
+      userId,
+      endedAt: new Date("2026-03-18T10:30:00Z"),
+      durationSeconds: 1800,
+      xpAwarded: 60,
+      contentType: "MANGA",
+    });
 
     const s2 = await repo.create({
       userId,
@@ -178,7 +199,14 @@ describe("ReadingSessionRepository (integration)", () => {
       contentId: "book-1",
       startedAt: new Date("2026-03-18T11:00:00Z"),
     });
-    await repo.updateEnd(s2.id, new Date("2026-03-18T11:15:00Z"), 900);
+    await repo.closeWithAward({
+      sessionId: s2.id,
+      userId,
+      endedAt: new Date("2026-03-18T11:15:00Z"),
+      durationSeconds: 900,
+      xpAwarded: 30,
+      contentType: "BOOK",
+    });
 
     const mangaTime = await repo.getTotalReadingTimeByUserAndType(userId, "MANGA");
     expect(mangaTime._sum.durationSeconds).toBe(1800);
@@ -187,9 +215,9 @@ describe("ReadingSessionRepository (integration)", () => {
     expect(bookTime._sum.durationSeconds).toBe(900);
   });
 
-  it("getTotalReadingTimeByUser() should return null sum when no completed sessions", async () => {
+  it("getTotalReadingTimeByUser() should return zero when no completed sessions", async () => {
     const result = await repo.getTotalReadingTimeByUser(userId);
 
-    expect(result._sum.durationSeconds).toBeNull();
+    expect(result._sum.durationSeconds).toBe(0);
   });
 });
