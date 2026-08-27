@@ -53,8 +53,5 @@ jobs:
       - name: Generate Prisma Client
         run: pnpm run prisma:generate
 
-      - name: Push Prisma Schema to Test DB
-        run: pnpm prisma db push
-
       - name: Run test suite
         run: pnpm test
