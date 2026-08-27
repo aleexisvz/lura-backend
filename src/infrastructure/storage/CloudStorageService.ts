@@ -4,9 +4,7 @@ import {
   GetObjectCommand,
   HeadObjectCommand,
   ListObjectsV2Command,
-  DeleteObjectsCommand,
-  CopyObjectCommand,
-  DeleteObjectCommand
+  DeleteObjectsCommand
 } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { env } from "../../config/env.js";
@@ -27,10 +25,6 @@ export class CloudStorageService {
     });
   }
 
-  // En S3 no existen las carpetas reales, por lo que no es necesario crearlas.
-  async ensureDir(_dir: string) {
-    return;
-  }
 
   async saveStream(stream: Readable, filepath: string) {
     const upload = new Upload({
@@ -44,37 +38,6 @@ export class CloudStorageService {
     await upload.done();
   }
 
-  async moveDir(src: string, dest: string) {
-    // S3 no tiene "mover carpeta". Debemos listar todos los objetos de src, copiarlos a dest, y borrarlos de src.
-    const srcPrefix = this.normalizeKey(src) + "/";
-    const destPrefix = this.normalizeKey(dest) + "/";
-    
-    const listedObjects = await this.s3.send(
-      new ListObjectsV2Command({ Bucket: this.bucket, Prefix: srcPrefix })
-    );
-
-    if (!listedObjects.Contents || listedObjects.Contents.length === 0) return;
-
-    for (const object of listedObjects.Contents) {
-      if (!object.Key) continue;
-      const newKey = object.Key.replace(srcPrefix, destPrefix);
-
-      await this.s3.send(
-        new CopyObjectCommand({
-          Bucket: this.bucket,
-          CopySource: `${this.bucket}/${object.Key}`,
-          Key: newKey,
-        })
-      );
-
-      await this.s3.send(
-        new DeleteObjectCommand({
-          Bucket: this.bucket,
-          Key: object.Key,
-        })
-      );
-    }
-  }
 
   async listFiles(dir: string) {
     const prefix = this.normalizeKey(dir) + "/";
@@ -228,8 +191,4 @@ export class CloudStorageService {
     return `${this.resolveUserProfileImageDir(userId)}/avatar${extension}`;
   }
 
-  resolveAbsolutePath(relativePath: string) {
-    // En S3 la ruta "relativa" que guardamos en BD es directamente la Key
-    return relativePath;
-  }
 }

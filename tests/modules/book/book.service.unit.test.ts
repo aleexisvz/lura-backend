@@ -15,7 +15,6 @@ describe("BookService (unit)", () => {
 
   const storage = {
     resolveBookEpubPath: vi.fn(),
-    ensureDir: vi.fn(),
     saveStream: vi.fn(),
   };
 
@@ -149,7 +148,6 @@ describe("BookService (unit)", () => {
       bookTags: [],
     });
     const absolutePath = path.join("C:", "repo", "storage", "books", "b-1", "book.epub");
-    const expectedDir = path.dirname(absolutePath);
     storage.resolveBookEpubPath.mockReturnValue(absolutePath);
 
     const fileStream = Readable.from(["epub-bytes"]);
@@ -163,7 +161,6 @@ describe("BookService (unit)", () => {
 
     const result = await service.uploadEpub(req as any, "b-1");
 
-    expect(storage.ensureDir).toHaveBeenCalledWith(expectedDir);
     expect(storage.saveStream).toHaveBeenCalledWith(fileStream, absolutePath);
     expect(repo.updateBookEpubPath).toHaveBeenCalledWith("b-1", "books/b-1/book.epub");
     expect(result).toEqual({ uploaded: true });

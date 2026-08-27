@@ -73,9 +73,7 @@ export class BookService {
     }
 
     const absolutePath = this.storage.resolveBookEpubPath(bookId);
-    const absoluteDir = path.dirname(absolutePath);
 
-    await this.storage.ensureDir(absoluteDir);
     await this.storage.saveStream(file.file, absolutePath);
 
     const relativePath = path.posix.join("books", bookId, "book.epub");
@@ -96,7 +94,6 @@ export class BookService {
     const absolutePath = this.storage.resolveBookCoverPath(bookId, extension);
     const relativePath = path.posix.join("books", bookId, "cover", `cover${extension}`);
 
-    await this.storage.ensureDir(coverDir);
     await this.storage.removeFilesByPrefix(coverDir, "cover.");
     await this.storage.saveStream(file.file, absolutePath);
     await this.repo.updateBookCoverPath(bookId, relativePath);

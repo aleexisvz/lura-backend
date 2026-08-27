@@ -59,7 +59,6 @@ export class UsersService {
     const absolutePath = this.storage.resolveUserProfileImagePath(userId, extension);
     const relativePath = path.posix.join("users", userId, "profile", `avatar${extension}`);
 
-    await this.storage.ensureDir(imageDir);
     await this.storage.removeFilesByPrefix(imageDir, "avatar.");
     await this.storage.saveStream(file.file, absolutePath);
     const updated = await this.repo.updateProfileImagePath(userId, relativePath);
