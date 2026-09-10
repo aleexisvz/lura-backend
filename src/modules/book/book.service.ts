@@ -5,7 +5,6 @@ import { notFound, badRequest } from "../../shared/errors/error-factory.js";
 import { CloudStorageService } from "../../infrastructure/storage/CloudStorageService.js";
 import { BookRepository } from "./book.repository.js";
 import type { CreateBookDTO, PublicBookDTO, UpdateBookDTO } from "./book.types.js";
-import { getImageContentType } from "../../shared/utils/get-image-content-type.js";
 import { TagsRepository } from "../tags/tags.repository.js";
 
 export class BookService {
@@ -74,7 +73,7 @@ export class BookService {
 
     const absolutePath = this.storage.resolveBookEpubPath(bookId);
 
-    await this.storage.saveStream(file.file, absolutePath);
+    await this.storage.saveStream(file.file, absolutePath, "application/epub+zip");
 
     const relativePath = path.posix.join("books", bookId, "book.epub");
     await this.repo.updateBookEpubPath(bookId, relativePath);
@@ -93,9 +92,10 @@ export class BookService {
     const coverDir = this.storage.resolveBookCoverDir(bookId);
     const absolutePath = this.storage.resolveBookCoverPath(bookId, extension);
     const relativePath = path.posix.join("books", bookId, "cover", `cover${extension}`);
+    const contentType = file.mimetype || (extension === ".webp" ? "image/webp" : extension === ".png" ? "image/png" : "image/jpeg");
 
     await this.storage.removeFilesByPrefix(coverDir, "cover.");
-    await this.storage.saveStream(file.file, absolutePath);
+    await this.storage.saveStream(file.file, absolutePath, contentType);
     await this.repo.updateBookCoverPath(bookId, relativePath);
 
     return { uploaded: true };
