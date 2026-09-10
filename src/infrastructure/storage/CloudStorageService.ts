@@ -26,13 +26,14 @@ export class CloudStorageService {
   }
 
 
-  async saveStream(stream: Readable, filepath: string) {
+  async saveStream(stream: Readable, filepath: string, contentType?: string) {
     const upload = new Upload({
       client: this.s3,
       params: {
         Bucket: this.bucket,
         Key: this.normalizeKey(filepath),
         Body: stream,
+        ...(contentType ? { ContentType: contentType } : {}),
       },
     });
     await upload.done();
