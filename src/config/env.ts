@@ -1,8 +1,12 @@
 import { config } from "dotenv";
 import { z } from "zod";
 
-// Forzamos a dotenv a sobreescribir las variables del sistema con las del .env
-config({ override: true });
+// Forzamos a dotenv a sobreescribir las variables del sistema con las del .env solo si no estamos en test
+if (process.env.NODE_ENV !== "test") {
+  config({ override: true });
+} else {
+  config();
+}
 
 // All environment variables are validated at startup.
 // If a required variable is missing or fails its constraint,
