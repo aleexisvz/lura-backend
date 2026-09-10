@@ -29,6 +29,29 @@ export class BookService {
     return this.toPublicBook(book);
   }
 
+  private epubCache = new Map<string, { buffer: Buffer; filename: string }>();
+
+  async getBookFile(bookId: string) {
+    const cached = this.epubCache.get(bookId);
+    if (cached) {
+      return cached;
+    }
+
+    const book = await this.repo.findBookById(bookId);
+
+    if (!book || !book.epubPath) {
+      throw notFound("BOOK_NOT_FOUND", "Book or EPUB file not found");
+    }
+
+    const buffer = await this.storage.getFileBuffer(book.epubPath);
+    const result = {
+      buffer,
+      filename: `${book.title}.epub`,
+    };
+    this.epubCache.set(bookId, result);
+    return result;
+  }
+
   async createBook(data: CreateBookDTO) {
     const validTagIds = await this.assertTagIdsForScope(data.tagIds ?? [], "BOOK");
     const created = await this.repo.createBook({
@@ -77,6 +100,7 @@ export class BookService {
 
     const relativePath = path.posix.join("books", bookId, "book.epub");
     await this.repo.updateBookEpubPath(bookId, relativePath);
+    this.epubCache.delete(bookId);
 
     return { uploaded: true };
   }
@@ -182,9 +206,11 @@ export class BookService {
       tags,
       categories: tags.map((tag) => tag.name),
       coverUrl: book.coverPath ? this.storage.getPublicUrl(book.coverPath) : null,
+      epubUrl: book.epubPath ? this.storage.getPublicUrl(book.epubPath) : null,
       createdAt: book.createdAt,
       updatedAt: book.updatedAt,
       hasEpub: Boolean(book.epubPath),
+      readerStatus: "READY",
     };
   }
 }

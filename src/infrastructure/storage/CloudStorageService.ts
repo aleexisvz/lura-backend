@@ -72,6 +72,17 @@ export class CloudStorageService {
     return data.Body as NodeJS.ReadableStream;
   }
 
+  async getFileBuffer(filepath: string): Promise<Buffer> {
+    const data = await this.s3.send(
+      new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: this.normalizeKey(filepath),
+      })
+    );
+    const bytes = await (data.Body as any).transformToByteArray();
+    return Buffer.from(bytes);
+  }
+
   async getFileStats(filepath: string) {
     const head = await this.s3.send(
       new HeadObjectCommand({

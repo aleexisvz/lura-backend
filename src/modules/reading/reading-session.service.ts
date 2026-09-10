@@ -4,6 +4,7 @@ import { VolumeCompletionRepository } from "./volume-completion.repository.js";
 import { buildReadingLevelSnapshot, calculateSessionXp, getXpMultiplierInfo } from "./reading-xp.js";
 import { AppError } from "../../shared/errors/AppError.js";
 import { CloudStorageService } from "../../infrastructure/storage/CloudStorageService.js";
+import { bookProgressStore } from "../book/book-progress.store.js";
 
 const DEFAULT_AUTO_CLOSED_SESSION_CAP_SECONDS = 30 * 60;
 
@@ -139,25 +140,30 @@ export class ReadingSessionService {
         const levelSnapshot = buildReadingLevelSnapshot(readingXpTotal);
         const multiplierInfo = getXpMultiplierInfo(new Date());
 
+        const bookPagesSum = bookProgressStore.sumPagesForUser(userId);
+        const mangaPagesRead = (pagesSum._sum.page ?? 0) + (pagesSum._sum.historicalPagesRead ?? 0);
+        const totalPagesRead = mangaPagesRead + bookPagesSum;
+        const completedBooksCount = bookProgressStore.countCompletedBooksForUser(userId);
+
         return {
             totalSessions,
             totalMinutes: Math.floor(totalSeconds / 60),
             totalSeconds,
             mangaSeconds: manga._sum.durationSeconds ?? 0,
             bookSeconds: book._sum.durationSeconds ?? 0,
-            totalPagesRead: (pagesSum._sum.page ?? 0) + (pagesSum._sum.historicalPagesRead ?? 0),
+            totalPagesRead,
             totalVolumesRead,
             totalMangasRead,
             totalSeriesRead: totalMangasRead,
-            totalBooksRead,
+            totalBooksRead: completedBooksCount,
             readingLevel: levelSnapshot.readingLevel,
             readingXpTotal: levelSnapshot.readingXpTotal,
             xpInLevel: levelSnapshot.xpInLevel,
             xpToNextLevel: levelSnapshot.xpToNextLevel,
             xpProgressPercent: levelSnapshot.xpProgressPercent,
+            activeXpEvent: multiplierInfo.activeXpEvent,
             isHotWeekend: multiplierInfo.isHotWeekend,
             xpMultiplier: multiplierInfo.multiplier,
-            activeXpEvent: multiplierInfo.activeXpEvent,
             xpPerMinute: multiplierInfo.xpPerMinute,
         };
     }
