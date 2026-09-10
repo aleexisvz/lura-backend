@@ -29,18 +29,27 @@ export class BookService {
     return this.toPublicBook(book);
   }
 
+  private epubCache = new Map<string, { buffer: Buffer; filename: string }>();
+
   async getBookFile(bookId: string) {
+    const cached = this.epubCache.get(bookId);
+    if (cached) {
+      return cached;
+    }
+
     const book = await this.repo.findBookById(bookId);
 
     if (!book || !book.epubPath) {
       throw notFound("BOOK_NOT_FOUND", "Book or EPUB file not found");
     }
 
-    const stream = await this.storage.createReadStream(book.epubPath);
-    return {
-      stream,
+    const buffer = await this.storage.getFileBuffer(book.epubPath);
+    const result = {
+      buffer,
       filename: `${book.title}.epub`,
     };
+    this.epubCache.set(bookId, result);
+    return result;
   }
 
   async createBook(data: CreateBookDTO) {
@@ -91,6 +100,7 @@ export class BookService {
 
     const relativePath = path.posix.join("books", bookId, "book.epub");
     await this.repo.updateBookEpubPath(bookId, relativePath);
+    this.epubCache.delete(bookId);
 
     return { uploaded: true };
   }

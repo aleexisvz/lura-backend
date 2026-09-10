@@ -54,11 +54,13 @@ export class BookController {
 
   getBookFile = async (req: FastifyRequest, reply: FastifyReply) => {
     const { bookId } = BookIdParamsSchema.parse(req.params);
-    const { stream, filename } = await this.service.getBookFile(bookId);
+    const { buffer, filename } = await this.service.getBookFile(bookId);
     return reply
       .header("Content-Type", "application/epub+zip")
+      .header("Content-Length", buffer.length)
       .header("Content-Disposition", `inline; filename="${encodeURIComponent(filename)}"`)
-      .send(stream);
+      .header("Cache-Control", "public, max-age=86400, immutable")
+      .send(buffer);
   };
 
   createBook = async (req: FastifyRequest, reply: FastifyReply) => {

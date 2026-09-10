@@ -16,6 +16,9 @@ describe("BookService (unit)", () => {
   const storage = {
     resolveBookEpubPath: vi.fn(),
     saveStream: vi.fn(),
+    getPublicUrl: vi.fn((p) => `https://cdn.example.com/${p}`),
+    createReadStream: vi.fn(),
+    getFileBuffer: vi.fn(),
   };
 
   const tagsRepo = {
@@ -161,8 +164,37 @@ describe("BookService (unit)", () => {
 
     const result = await service.uploadEpub(req as any, "b-1");
 
-    expect(storage.saveStream).toHaveBeenCalledWith(fileStream, absolutePath);
+    expect(storage.saveStream).toHaveBeenCalledWith(
+      fileStream,
+      absolutePath,
+      "application/epub+zip"
+    );
     expect(repo.updateBookEpubPath).toHaveBeenCalledWith("b-1", "books/b-1/book.epub");
     expect(result).toEqual({ uploaded: true });
+  });
+
+  it("getBookFile() should return buffer and cache it", async () => {
+    repo.findBookById.mockResolvedValue({
+      id: "b-1",
+      title: "Dune",
+      epubPath: "books/b-1/book.epub",
+    });
+    const fakeBuffer = Buffer.from("fake-epub-data");
+    storage.getFileBuffer.mockResolvedValue(fakeBuffer);
+
+    const firstCall = await service.getBookFile("b-1");
+    expect(firstCall).toEqual({
+      buffer: fakeBuffer,
+      filename: "Dune.epub",
+    });
+    expect(storage.getFileBuffer).toHaveBeenCalledTimes(1);
+
+    // Second call should hit in-memory cache without calling storage again
+    const secondCall = await service.getBookFile("b-1");
+    expect(secondCall).toEqual({
+      buffer: fakeBuffer,
+      filename: "Dune.epub",
+    });
+    expect(storage.getFileBuffer).toHaveBeenCalledTimes(1);
   });
 });
