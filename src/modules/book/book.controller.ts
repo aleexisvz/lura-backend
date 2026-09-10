@@ -52,6 +52,15 @@ export class BookController {
     return reply.send(book);
   };
 
+  getBookFile = async (req: FastifyRequest, reply: FastifyReply) => {
+    const { bookId } = BookIdParamsSchema.parse(req.params);
+    const { stream, filename } = await this.service.getBookFile(bookId);
+    return reply
+      .header("Content-Type", "application/epub+zip")
+      .header("Content-Disposition", `inline; filename="${encodeURIComponent(filename)}"`)
+      .send(stream);
+  };
+
   createBook = async (req: FastifyRequest, reply: FastifyReply) => {
     const body = CreateBookSchema.parse(req.body);
     const book = await this.service.createBook({

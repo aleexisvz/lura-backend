@@ -20,4 +20,5 @@ export async function bookRoutes(app: FastifyInstance) {
   app.post("/:bookId/upload-cover", { preHandler: requireAdmin }, controller.uploadBookCover);
   app.get("/", { preHandler: requireAuth }, controller.getAllBooks);
   app.get("/:bookId", { preHandler: requireAuth }, controller.getBookById);
+  app.get("/:bookId/file", { preHandler: requireAuth }, controller.getBookFile);
 }

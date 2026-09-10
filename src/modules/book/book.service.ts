@@ -29,6 +29,20 @@ export class BookService {
     return this.toPublicBook(book);
   }
 
+  async getBookFile(bookId: string) {
+    const book = await this.repo.findBookById(bookId);
+
+    if (!book || !book.epubPath) {
+      throw notFound("BOOK_NOT_FOUND", "Book or EPUB file not found");
+    }
+
+    const stream = await this.storage.createReadStream(book.epubPath);
+    return {
+      stream,
+      filename: `${book.title}.epub`,
+    };
+  }
+
   async createBook(data: CreateBookDTO) {
     const validTagIds = await this.assertTagIdsForScope(data.tagIds ?? [], "BOOK");
     const created = await this.repo.createBook({
