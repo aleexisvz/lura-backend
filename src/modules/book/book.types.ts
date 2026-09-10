@@ -20,7 +20,9 @@ export type PublicBookDTO = {
   tags: { id: string; name: string; slug: string }[];
   categories: string[];
   coverUrl: string | null;
+  epubUrl: string | null;
   createdAt: Date;
   updatedAt: Date;
   hasEpub: boolean;
+  readerStatus: "READY" | "PROCESSING" | "FAILED";
 };

@@ -182,9 +182,11 @@ export class BookService {
       tags,
       categories: tags.map((tag) => tag.name),
       coverUrl: book.coverPath ? this.storage.getPublicUrl(book.coverPath) : null,
+      epubUrl: book.epubPath ? this.storage.getPublicUrl(book.epubPath) : null,
       createdAt: book.createdAt,
       updatedAt: book.updatedAt,
       hasEpub: Boolean(book.epubPath),
+      readerStatus: "READY",
     };
   }
 }
