@@ -61,8 +61,20 @@ class BookProgressStore {
     const key = `${userId}:${bookId}`;
     const existing = this.store.get(key);
     const progressPercent = Math.min(100, Math.max(0, Number(data.progressPercent) || 0));
-    const currentPage = data.currentPage !== undefined ? Number(data.currentPage) : undefined;
-    const totalPages = data.totalPages !== undefined ? Number(data.totalPages) : undefined;
+    const currentPage = data.currentPage !== undefined ? Number(data.currentPage) : existing?.currentPage;
+    const incomingTotal = data.totalPages !== undefined ? Number(data.totalPages) : undefined;
+    const existingTotal =
+      typeof existing?.totalPages === "number" && existing.totalPages > 1
+        ? existing.totalPages
+        : undefined;
+
+    // Protect against downgrading a valid book total (e.g. 835) with a transient chapter count (e.g. 15)
+    const totalPages =
+      typeof incomingTotal === "number" && incomingTotal > 1
+        ? existingTotal && existingTotal > incomingTotal
+          ? existingTotal
+          : incomingTotal
+        : existingTotal;
 
     const isCompleted =
       data.completed === true ||
@@ -70,8 +82,8 @@ class BookProgressStore {
       (typeof currentPage === "number" &&
         typeof totalPages === "number" &&
         totalPages > 1 &&
-        currentPage >= totalPages) ||
-      Boolean(existing?.completed);
+        currentPage >= totalPages &&
+        progressPercent >= 95);
 
     const record: BookProgressRecord = {
       userId,
