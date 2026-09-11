@@ -142,6 +142,8 @@ describe("ReadingSession routes (api)", () => {
       mangaSeconds: 0,
       bookSeconds: 0,
       totalPagesRead: 0,
+      mangaPagesRead: 0,
+      bookPagesRead: 0,
       totalVolumesRead: 0,
       totalMangasRead: 0,
       totalSeriesRead: 0,
