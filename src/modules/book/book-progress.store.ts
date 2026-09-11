@@ -105,7 +105,7 @@ class BookProgressStore {
     const result: BookProgressRecord[] = [];
     const seen = new Set<string>();
     for (const [key, value] of this.store.entries()) {
-      if (value.userId === userId || (!key.includes(":") && key === value.bookId)) {
+      if (value.userId === userId) {
         if (!seen.has(value.bookId)) {
           seen.add(value.bookId);
           result.push(value);
