@@ -143,7 +143,10 @@ export class ReadingSessionService {
         const bookPagesSum = bookProgressStore.sumPagesForUser(userId);
         const mangaPagesRead = (pagesSum._sum.page ?? 0) + (pagesSum._sum.historicalPagesRead ?? 0);
         const totalPagesRead = mangaPagesRead + bookPagesSum;
-        const completedBooksCount = bookProgressStore.countCompletedBooksForUser(userId);
+        const completedBooksCount = Math.max(
+            totalBooksRead,
+            bookProgressStore.countCompletedBooksForUser(userId)
+        );
 
         return {
             totalSessions,
@@ -152,6 +155,8 @@ export class ReadingSessionService {
             mangaSeconds: manga._sum.durationSeconds ?? 0,
             bookSeconds: book._sum.durationSeconds ?? 0,
             totalPagesRead,
+            mangaPagesRead,
+            bookPagesRead: bookPagesSum,
             totalVolumesRead,
             totalMangasRead,
             totalSeriesRead: totalMangasRead,
