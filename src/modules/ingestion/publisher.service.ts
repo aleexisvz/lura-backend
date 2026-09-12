@@ -1,3 +1,4 @@
+import { logger } from "../../config/logger.js";
 import { MangaDexClient } from "./mangadex.client.js";
 import { IngestionRepository } from "./ingestion.repository.js";
 import { IngestionService } from "./ingestion.service.js";
@@ -113,7 +114,7 @@ export class PublisherService {
     });
 
     if (candidates.length === 0) {
-      console.log("[Publisher] No se encontraron mangas nuevos para publicar.");
+      logger.info("[Publisher] No se encontraron mangas nuevos para publicar.");
       return {
         publishedCount: 0,
         published: [],
@@ -129,7 +130,7 @@ export class PublisherService {
       status: string;
     }> = [];
 
-    console.log(
+    logger.info(
       `[Publisher] Se publicarán ${toPublish.length} manga(s) automáticamente.`
     );
 
@@ -150,13 +151,15 @@ export class PublisherService {
           status: result.status,
         });
 
-        console.log(
+        logger.info(
           `[Publisher] ✅ "${result.title}" publicado con éxito (${result.totalVolumes} tomos).`
         );
       } catch (err) {
-        console.error(
-          `[Publisher] ❌ Error publicando "${candidate.title}":`,
-          err instanceof Error ? err.message : err
+        logger.error(
+          { err },
+          `[Publisher] ❌ Error publicando "${candidate.title}": ${
+            err instanceof Error ? err.message : String(err)
+          }`
         );
       }
     }

@@ -2,6 +2,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 import pg from "pg";
 import { env } from "../../config/env.js";
+import { logger } from "../../config/logger.js";
 
 function resolveDatabaseUrl(rawUrl: string): string {
   try {
@@ -39,7 +40,7 @@ const pool = new pg.Pool({
 
 pool.on("error", (err) => {
   // Prevent unhandled errors from crashing the process when serverless DB closes idle sockets
-  console.warn("[Database Pool] Idle client error:", err.message);
+  logger.warn({ err: err.message }, "[Database Pool] Idle client error");
 });
 
 const adapter = new PrismaPg(pool);
