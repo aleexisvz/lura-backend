@@ -1,3 +1,4 @@
+import { logger } from "../../config/logger.js";
 import type {
   MangaDexMangaData,
   MangaDexAggregateResponse,
@@ -50,7 +51,7 @@ export class MangaDexClient {
 
       if (response.status === 429 && retries > 0) {
         const retryAfter = Number(response.headers.get("Retry-After")) || 2;
-        console.warn(`[MangaDex RateLimit] 429 Too Many Requests. Esperando ${retryAfter}s antes de reintentar...`);
+        logger.warn(`[MangaDex RateLimit] 429 Too Many Requests. Esperando ${retryAfter}s antes de reintentar...`);
         await new Promise((resolve) => setTimeout(resolve, (retryAfter + 1) * 1000));
         return this.rateLimitedFetch(url, options, retries - 1);
       }
@@ -58,7 +59,7 @@ export class MangaDexClient {
       return response;
     } catch (err) {
       if (retries > 0) {
-        console.warn(`[MangaDex Network Error] Reintentando tras error: ${(err as Error).message}`);
+        logger.warn(`[MangaDex Network Error] Reintentando tras error: ${(err as Error).message}`);
         await new Promise((resolve) => setTimeout(resolve, 1500));
         return this.rateLimitedFetch(url, options, retries - 1);
       }

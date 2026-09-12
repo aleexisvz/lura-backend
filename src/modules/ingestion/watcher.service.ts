@@ -1,3 +1,4 @@
+import { logger } from "../../config/logger.js";
 import { MangaDexClient } from "./mangadex.client.js";
 import { IngestionRepository } from "./ingestion.repository.js";
 import { IngestionService } from "./ingestion.service.js";
@@ -19,11 +20,11 @@ export class WatcherService {
    * 3. Patches fallback volumes to Spanish as translations appear.
    */
   async checkAndPatch() {
-    console.log("[Watcher] Iniciando auditoría y revisión de mangas (limpieza de tomos huérfanos, nuevos tomos y traducciones pendientes)...");
+    logger.info("[Watcher] Iniciando auditoría y revisión de mangas (limpieza de tomos huérfanos, nuevos tomos y traducciones pendientes)...");
     const allTrackers = await this.repo.findAllTrackers();
 
     if (allTrackers.length === 0) {
-      console.log("[Watcher] No hay mangas en seguimiento que requieran revisión.");
+      logger.info("[Watcher] No hay mangas en seguimiento que requieran revisión.");
       return {
         checkedTrackers: 0,
         actions: [],
@@ -31,7 +32,7 @@ export class WatcherService {
       };
     }
 
-    console.log(`[Watcher] ${allTrackers.length} manga(s) encontrados en seguimiento.`);
+    logger.info(`[Watcher] ${allTrackers.length} manga(s) encontrados en seguimiento.`);
     const actions: Array<{
       mangaTitle: string;
       mangaId: string;
@@ -43,7 +44,7 @@ export class WatcherService {
       const rawDbVolumes = tracker.Manga.volumes || [];
       const dbVolumes = [...rawDbVolumes].sort((a, b) => a.number - b.number);
 
-      console.log(
+      logger.info(
         `[Watcher] Auditando "${tracker.Manga.title}" (Tomos en BD: [${dbVolumes.map((v) => v.number).join(", ")}], Pendientes: [${tracker.pendingSpanishVols.join(", ")}])...`
       );
 
@@ -51,7 +52,7 @@ export class WatcherService {
         // --- FASE 1: AUDITORÍA DE CONSISTENCIA LOCAL ---
         // 1.1 Si el manga no tiene Tomo 1 (por ejemplo, sólo tiene 2-3-4 o 5-21-25)
         if (dbVolumes.length === 0 || dbVolumes[0]!.number !== 1) {
-          console.warn(
+          logger.warn(
             `[Watcher:Audit] ⚠️ El manga "${tracker.Manga.title}" no cuenta con el Tomo 1 en BD. Eliminando manga y purgando almacenamiento R2...`
           );
 
@@ -82,7 +83,7 @@ export class WatcherService {
 
         if (invalidVolumes.length > 0) {
           for (const invVol of invalidVolumes) {
-            console.warn(
+            logger.warn(
               `[Watcher:Audit] 🗑️ Purgando tomo desconectado: Tomo ${invVol.number} de "${tracker.Manga.title}" (R2 y BD)...`
             );
 
@@ -111,7 +112,7 @@ export class WatcherService {
         // 2.1 Descargar nuevos tomos continuos disponibles
         for (const volPlan of updatedPlan.volumes) {
           if (volPlan.volumeNumber > maxDbVolumeNumber) {
-            console.log(
+            logger.info(
               `[Watcher] 📥 Nuevo tomo contiguo disponible: Tomo ${volPlan.volumeNumber} para "${tracker.Manga.title}". Descargando...`
             );
 
@@ -137,7 +138,7 @@ export class WatcherService {
 
             // If it's now 100% available in Spanish
             if (volPlan && volPlan.language === "ES" && !volPlan.isFallback) {
-              console.log(
+              logger.info(
                 `[Watcher] 🚀 ¡Tomo ${pendingVolNum} de "${tracker.Manga.title}" ya está completo en Español! Parchando...`
               );
 
@@ -185,16 +186,17 @@ export class WatcherService {
         });
 
         if (isComplete) {
-          console.log(`[Watcher] 🎉 "${tracker.Manga.title}" está 100% en Español.`);
+          logger.info(`[Watcher] 🎉 "${tracker.Manga.title}" está 100% en Español.`);
         }
       } catch (err) {
-        console.error(
+        logger.error(
+          { err },
           `[Watcher] Error procesando manga "${tracker.Manga.title}": ${(err as Error).message}`
         );
       }
     }
 
-    console.log(
+    logger.info(
       `[Watcher] Finalizado. ${actions.length} acción(es) realizadas.`
     );
 

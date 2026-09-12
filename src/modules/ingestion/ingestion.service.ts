@@ -1,6 +1,7 @@
 import { Readable } from "node:stream";
 import path from "node:path";
 import sharp from "sharp";
+import { logger } from "../../config/logger.js";
 import { MangaDexClient } from "./mangadex.client.js";
 import { IngestionRepository } from "./ingestion.repository.js";
 import { CloudStorageService } from "../../infrastructure/storage/CloudStorageService.js";
@@ -23,7 +24,7 @@ export class IngestionService {
     try {
       externalId = MangaDexClient.extractMangaId(mangaIdOrUrlOrTitle);
     } catch {
-      console.log(`[Ingestor] Buscando en MangaDex por título: "${mangaIdOrUrlOrTitle}"...`);
+      logger.info(`[Ingestor] Buscando en MangaDex por título: "${mangaIdOrUrlOrTitle}"...`);
       const matched = await this.mangadex.searchMangaByTitle(mangaIdOrUrlOrTitle);
       if (!matched) {
         throw new Error(`No se encontró ningún manga en MangaDex con el término: "${mangaIdOrUrlOrTitle}"`);
@@ -31,16 +32,16 @@ export class IngestionService {
       externalId = matched.id;
     }
 
-    console.log(`[Ingestor] Consultando metadatos para ID: ${externalId}...`);
+    logger.info(`[Ingestor] Consultando metadatos para ID: ${externalId}...`);
     const mangaData = await this.mangadex.getManga(externalId);
 
-    console.log(`[Ingestor] Consultando mapa canónico en MangaDex (/aggregate)...`);
+    logger.info(`[Ingestor] Consultando mapa canónico en MangaDex (/aggregate)...`);
     const aggregateEn = await this.mangadex.getAggregate(externalId, "en");
 
-    console.log(`[Ingestor] Consultando capítulos disponibles (ES / EN)...`);
+    logger.info(`[Ingestor] Consultando capítulos disponibles (ES / EN)...`);
     const allChapters = await this.mangadex.getChapters(externalId, ["es", "es-la", "en"]);
 
-    console.log(`[Ingestor] Evaluando disponibilidad híbrida tomo a tomo...`);
+    logger.info(`[Ingestor] Evaluando disponibilidad híbrida tomo a tomo...`);
     const plan = ChapterMapper.buildMangaPlan(mangaData, aggregateEn, allChapters);
     const summary = ChapterMapper.toDryRunSummary(plan);
 
@@ -91,9 +92,9 @@ export class IngestionService {
         description: plan.description,
         status: plan.status,
       });
-      console.log(`[Ingestor] Manga creado en BD: "${manga.title}" (ID: ${manga.id})`);
+      logger.info(`[Ingestor] Manga creado en BD: "${manga.title}" (ID: ${manga.id})`);
     } else {
-      console.log(`[Ingestor] Manga ya existe en BD: "${manga.title}" (ID: ${manga.id}). Actualizando metadatos y rellenando tomos nuevos...`);
+      logger.info(`[Ingestor] Manga ya existe en BD: "${manga.title}" (ID: ${manga.id}). Actualizando metadatos y rellenando tomos nuevos...`);
       await this.repo.updateMangaMetadata(manga.id, {
         author: plan.author ?? manga.author,
         description: plan.description ?? manga.description,
@@ -105,7 +106,7 @@ export class IngestionService {
     // 2. Sync Genre & Demographic Tags
     if (plan.tags && plan.tags.length > 0) {
       await this.repo.syncMangaTags(manga.id, plan.tags);
-      console.log(`[Ingestor] Etiquetas sincronizadas para "${manga.title}": [${plan.tags.join(", ")}]`);
+      logger.info(`[Ingestor] Etiquetas sincronizadas para "${manga.title}": [${plan.tags.join(", ")}]`);
     }
 
     // 3. Upload Manga Cover if available and not yet set
@@ -125,9 +126,9 @@ export class IngestionService {
 
         await this.storage.saveStream(Readable.from(webpCover), destCover);
         await this.repo.updateMangaCover(manga.id, relativeCover);
-        console.log(`[Ingestor] Portada subida a R2: ${relativeCover}`);
+        logger.info(`[Ingestor] Portada subida a R2: ${relativeCover}`);
       } catch (err) {
-        console.warn(`[Ingestor] No se pudo procesar la portada: ${(err as Error).message}`);
+        logger.warn(`[Ingestor] No se pudo procesar la portada: ${(err as Error).message}`);
       }
     }
 
@@ -196,7 +197,7 @@ export class IngestionService {
       volume.isFallback === volPlan.isFallback &&
       !options?.force
     ) {
-      console.log(
+      logger.info(
         `[Ingestor] Tomo ${volPlan.volumeNumber} ya está listo en BD (${volume.pagesCount} páginas). Omitiendo re-descarga.`
       );
       return;
@@ -214,16 +215,16 @@ export class IngestionService {
           pageUrls.push(`${baseUrl}/data/${hash}/${filename}`);
         }
       } catch (err) {
-        console.error(`[Ingestor] Error obteniendo páginas del capítulo ${ch.chapterNumber}: ${(err as Error).message}`);
+        logger.error({ err }, `[Ingestor] Error obteniendo páginas del capítulo ${ch.chapterNumber}: ${(err as Error).message}`);
       }
     }
 
     if (pageUrls.length === 0) {
-      console.warn(`[Ingestor] Tomo ${volPlan.volumeNumber} no tiene páginas disponibles. Saltando...`);
+      logger.warn(`[Ingestor] Tomo ${volPlan.volumeNumber} no tiene páginas disponibles. Saltando...`);
       return;
     }
 
-    console.log(
+    logger.info(
       `[Ingestor] Tomo ${volPlan.volumeNumber}: Descargando y procesando ${pageUrls.length} páginas...`
     );
 
@@ -276,7 +277,7 @@ export class IngestionService {
         volumeCoverRelative = path.posix.join("manga", mangaId, "volumes", volume.id, "cover", "cover.webp");
         await this.storage.saveStream(Readable.from(firstPageBuffer), volCoverDest);
       } catch (err) {
-        console.warn(`[Ingestor] No se pudo guardar portada de tomo: ${(err as Error).message}`);
+        logger.warn(`[Ingestor] No se pudo guardar portada de tomo: ${(err as Error).message}`);
       }
     }
 
@@ -291,6 +292,6 @@ export class IngestionService {
       ...(volumeCoverRelative ? { coverPath: volumeCoverRelative } : {}),
     });
 
-    console.log(`[Ingestor] Tomo ${volPlan.volumeNumber} completado (${dbPages.length} páginas subidas).`);
+    logger.info(`[Ingestor] Tomo ${volPlan.volumeNumber} completado (${dbPages.length} páginas subidas).`);
   }
 }
