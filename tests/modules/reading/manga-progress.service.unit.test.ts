@@ -18,6 +18,7 @@ describe("MangaProgressService (unit)", () => {
     findByUserAndVolume: vi.fn(),
     findVolumeIdsByUser: vi.fn(),
     deactivateByUserAndVolume: vi.fn(),
+    isMangaCompleted: vi.fn(),
   };
 
   const storage = {
@@ -38,6 +39,7 @@ describe("MangaProgressService (unit)", () => {
     completionRepo.findByUserAndVolume.mockResolvedValue(null);
     completionRepo.findVolumeIdsByUser.mockResolvedValue([]);
     completionRepo.deactivateByUserAndVolume.mockResolvedValue({ count: 0 });
+    completionRepo.isMangaCompleted.mockResolvedValue(false);
   });
 
   it("getProgress() should return null when no progress exists", async () => {
@@ -65,7 +67,31 @@ describe("MangaProgressService (unit)", () => {
       volumeId: "vol-1",
       page: 15,
       updatedAt: new Date("2026-03-01"),
+      volumeCompleted: false,
       completed: false,
+    });
+  });
+
+  it("getProgress() should return completed: true when manga is fully completed", async () => {
+    repo.findLatestByUserAndManga.mockResolvedValue({
+      id: "prog-1",
+      mangaId: "manga-1",
+      volumeId: "vol-1",
+      page: 100,
+      updatedAt: new Date("2026-03-01"),
+    });
+    completionRepo.findByUserAndVolume.mockResolvedValue({ isActive: true });
+    completionRepo.isMangaCompleted.mockResolvedValue(true);
+
+    const result = await service.getProgress("user-1", "manga-1");
+
+    expect(result).toEqual({
+      mangaId: "manga-1",
+      volumeId: "vol-1",
+      page: 100,
+      updatedAt: new Date("2026-03-01"),
+      volumeCompleted: true,
+      completed: true,
     });
   });
 
