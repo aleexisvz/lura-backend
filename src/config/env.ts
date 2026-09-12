@@ -13,6 +13,9 @@ if (process.env.NODE_ENV !== "test") {
 // Zod throws immediately and the process does not start.
 const EnvSchema = z.object({
   NODE_ENV: z.string().default("development"),
+  LOG_LEVEL: z
+    .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
+    .default("info"),
   // z.coerce.number() converts the raw string "3001" to the number 3001
   // automatically, so PORT can be used directly as a number throughout the app.
   PORT: z.coerce.number().default(3001),
