@@ -140,9 +140,14 @@ export class ReadingSessionService {
         const levelSnapshot = buildReadingLevelSnapshot(readingXpTotal);
         const multiplierInfo = getXpMultiplierInfo(new Date());
 
+        // Aggregate pages read across formats:
+        // For manga, combine current progress page index with historicalPagesRead
+        // so that volume resets for re-reading do not decrease lifetime statistics.
         const bookPagesSum = bookProgressStore.sumPagesForUser(userId);
         const mangaPagesRead = (pagesSum._sum.page ?? 0) + (pagesSum._sum.historicalPagesRead ?? 0);
         const totalPagesRead = mangaPagesRead + bookPagesSum;
+
+        // Reconcile completed book counts between database session records and local progress store
         const completedBooksCount = Math.max(
             totalBooksRead,
             bookProgressStore.countCompletedBooksForUser(userId)

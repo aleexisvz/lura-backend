@@ -60,6 +60,8 @@ export async function buildApp() {
     disableRequestLogging: isDev,
   });
 
+  // In development, replace verbose multi-line request logging with a concise,
+  // single-line HTTP access log displaying method, URL, status code, and duration.
   if (isDev) {
     app.addHook("onResponse", (request, reply, done) => {
       const duration = reply.elapsedTime.toFixed(1);
@@ -76,6 +78,8 @@ export async function buildApp() {
   await app.register(readingSessionRoutes)
   await app.register(volumeCompletionRoutes)
 
+  // Standardize error responses across all routes and Fastify core plugins.
+  // preSerialization handles object payloads emitted by route handlers or setErrorHandler.
   app.addHook("preSerialization", async (_request, reply, payload) => {
     if (reply.statusCode < 400) {
       return payload;
@@ -84,6 +88,9 @@ export async function buildApp() {
     return normalizeErrorPayload(payload, reply.statusCode);
   });
 
+  // onSend serves as a fail-safe fallback for serialized JSON strings emitted directly
+  // by internal Fastify plugins (such as rate-limiting or schema validation) to guarantee
+  // strict adherence to the { code, message, details } contract.
   app.addHook("onSend", async (_request, reply, payload) => {
     if (reply.statusCode < 400) {
       return payload;
@@ -106,6 +113,8 @@ export async function buildApp() {
     }
   });
   
+  // Centralized application error handler mapping domain errors (AppError),
+  // Zod validation errors, and Prisma uniqueness conflicts into structured HTTP responses.
   app.setErrorHandler((error, req, reply) => {
     if (error instanceof AppError) {
       return reply.status(error.statusCode).send({

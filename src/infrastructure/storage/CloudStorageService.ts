@@ -150,16 +150,23 @@ export class CloudStorageService {
     );
   }
 
-  // --- Mapeo de rutas (Keys en S3) ---
-  // A diferencia de LocalStorage, aquí devolvemos strings limpios (sin process.cwd())
+  // --- Object Key Mapping & CDN Resolution ---
 
+  /**
+   * Generates a fully qualified public CDN URL for a given storage key.
+   * Concatenates the public CDN domain with the sanitized object key.
+   */
   getPublicUrl(filepath: string) {
     const baseUrl = env.S3_PUBLIC_URL.replace(/\/$/, "");
     return `${baseUrl}/${this.normalizeKey(filepath)}`;
   }
 
+  /**
+   * Sanitizes relative paths for S3/Cloudflare R2:
+   * 1. Converts Windows-style backslashes ('\\') to forward slashes ('/').
+   * 2. Strips leading slashes to produce a valid relative object key.
+   */
   private normalizeKey(filepath: string) {
-    // Si la ruta viene con barras invertidas (Windows), las convertimos a barras normales (S3)
     return filepath.replace(/\\/g, "/").replace(/^\/+/, "");
   }
 
