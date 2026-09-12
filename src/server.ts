@@ -1,5 +1,6 @@
 import { buildApp } from "./app.js";
 import { env } from "./config/env.js";
+import { logger } from "./config/logger.js";
 
 async function main() {
   const app = await buildApp();
@@ -9,7 +10,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  // eslint-disable-next-line no-console
-  console.error(err);
+  logger.error(err, "Failed to start server");
   process.exit(1);
 });

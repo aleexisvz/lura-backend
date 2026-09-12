@@ -1,6 +1,8 @@
 import Fastify from "fastify";
 import { Prisma } from "@prisma/client";
 import { ZodError } from "zod";
+import { env } from "./config/env.js";
+import { getFastifyLoggerConfig } from "./config/logger.js";
 import { registerPlugins } from "./config/plugins.js";
 import { authRoutes } from "./modules/auth/auth.routes.js";
 import { bookRoutes } from "./modules/book/book.routes.js";
@@ -52,7 +54,21 @@ function normalizeErrorPayload(payload: unknown, statusCode: number) {
 }
 
 export async function buildApp() {
-  const app = Fastify({ logger: true });
+  const isDev = env.NODE_ENV === "development";
+  const app = Fastify({
+    logger: getFastifyLoggerConfig(),
+    disableRequestLogging: isDev,
+  });
+
+  if (isDev) {
+    app.addHook("onResponse", (request, reply, done) => {
+      const duration = reply.elapsedTime.toFixed(1);
+      request.log.info(
+        `${request.method} ${request.url} ${reply.statusCode} (${duration}ms)`
+      );
+      done();
+    });
+  }
 
   await registerPlugins(app);
   
