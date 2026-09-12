@@ -87,7 +87,7 @@ export class MangaController {
   };
 
   getRankings = async (_req: FastifyRequest, reply: FastifyReply) => {
-    const rankings = await this.service.getRankings(10);
+    const rankings = await this.service.getRankings(5);
     return reply.send(rankings);
   };
 

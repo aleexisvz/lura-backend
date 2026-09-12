@@ -32,14 +32,18 @@ export class MangaProgressService {
             return null;
         }
 
-        const completion = await this.completionRepo.findByUserAndVolume(userId, progress.volumeId);
+        const [volumeCompletion, isMangaCompleted] = await Promise.all([
+            this.completionRepo.findByUserAndVolume(userId, progress.volumeId),
+            this.completionRepo.isMangaCompleted(userId, mangaId),
+        ]);
 
         return {
             mangaId: progress.mangaId,
             volumeId: progress.volumeId,
             page: progress.page,
             updatedAt: progress.updatedAt,
-            completed: Boolean(completion?.isActive),
+            volumeCompleted: Boolean(volumeCompletion?.isActive),
+            completed: isMangaCompleted,
         };
     }
 

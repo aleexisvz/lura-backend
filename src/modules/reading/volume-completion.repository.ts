@@ -72,4 +72,17 @@ export class VolumeCompletionRepository {
             data: { isActive: false },
         });
     }
+
+    async isMangaCompleted(userId: string, mangaId: string): Promise<boolean> {
+        const [completedCount, totalVolumes] = await Promise.all([
+            prisma.volumeCompletion.count({
+                where: { userId, mangaId, isActive: true },
+            }),
+            prisma.volume.count({
+                where: { mangaId },
+            }),
+        ]);
+
+        return totalVolumes > 0 && completedCount >= totalVolumes;
+    }
 }
