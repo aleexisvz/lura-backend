@@ -10,6 +10,10 @@ export class VolumeCompletionService {
         private progressRepo = new MangaProgressRepository()
     ) {}
 
+    /**
+     * Marks a volume as completed for a user (either triggered on reading the last page
+     * or via explicit button in the reader UI).
+     */
     async markCompleted(userId: string, mangaId: string, volumeId: string) {
         const volume = await this.mangaRepo.findVolumeById(volumeId);
         if (!volume || volume.mangaId !== mangaId) {
@@ -19,6 +23,9 @@ export class VolumeCompletionService {
         return this.repo.upsert(userId, volumeId, mangaId);
     }
 
+    /**
+     * Checks whether the given volume is currently marked completed by the user.
+     */
     async isCompleted(userId: string, mangaId: string, volumeId: string) {
         const volume = await this.mangaRepo.findVolumeById(volumeId);
         if (!volume || volume.mangaId !== mangaId) {
@@ -32,6 +39,11 @@ export class VolumeCompletionService {
         };
     }
 
+    /**
+     * Resets reading progress for a completed volume so the user can re-read it.
+     * Deactivates the completion record (preserving timesCompleted for stats) and
+     * rolls the current page cursor back to 1 while archiving read pages into historicalPagesRead.
+     */
     async resetCompletion(userId: string, mangaId: string, volumeId: string) {
         const volume = await this.mangaRepo.findVolumeById(volumeId);
         if (!volume || volume.mangaId !== mangaId) {

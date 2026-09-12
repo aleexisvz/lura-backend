@@ -69,6 +69,7 @@ class BookProgressStore {
         : undefined;
 
     // Protect against downgrading a valid book total (e.g. 835) with a transient chapter count (e.g. 15)
+    // emitted by epub.js before the full book pagination has finished computing.
     const totalPages =
       typeof incomingTotal === "number" && incomingTotal > 1
         ? existingTotal && existingTotal > incomingTotal
@@ -76,6 +77,8 @@ class BookProgressStore {
           : incomingTotal
         : existingTotal;
 
+    // A book is marked complete if explicitly flagged, if reading percentage hits 100%,
+    // or if the reader reaches/exceeds total pages with at least 95% overall book progress.
     const isCompleted =
       data.completed === true ||
       progressPercent >= 100 ||
@@ -101,8 +104,9 @@ class BookProgressStore {
       completedAt: isCompleted ? (existing?.completedAt || new Date().toISOString()) : null,
       updatedAt: new Date().toISOString(),
     };
+    // Primary index isolated by user and book
     this.store.set(key, record);
-    // Also save under bookId for fallback lookups
+    // Secondary fallback index by bookId for backward compatibility with un-scoped queries
     this.store.set(bookId, record);
     this.saveToDisk();
     return record;
