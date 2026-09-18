@@ -336,4 +336,54 @@ describe("Users routes (api)", () => {
     expect(data.email).toBeUndefined();
     expect(data.password).toBeUndefined();
   });
+
+  it("GET /users/rankings should require auth and return top users by XP", async () => {
+    const unauthResponse = await app.inject({
+      method: "GET",
+      url: "/users/rankings",
+    });
+    expect(unauthResponse.statusCode).toBe(401);
+
+    await prisma.user.createMany({
+      data: [
+        {
+          id: "u-first",
+          email: "first@test.local",
+          username: "MasterReader",
+          password: "hash",
+          role: "USER",
+          readingXpTotal: 1000,
+          readingTimeTotalSeconds: 3600,
+        },
+        {
+          id: "u-second",
+          email: "second@test.local",
+          username: "ApprenticeReader",
+          password: "hash",
+          role: "USER",
+          readingXpTotal: 500,
+          readingTimeTotalSeconds: 1800,
+        },
+      ],
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/users/rankings?limit=5",
+      headers: buildAuthHeader(app, "USER"),
+    });
+
+    expect(response.statusCode).toBe(200);
+    const rankings = response.json();
+    expect(rankings).toBeInstanceOf(Array);
+    expect(rankings.length).toBeGreaterThanOrEqual(2);
+    expect(rankings[0]).toMatchObject({
+      rank: 1,
+      id: "u-first",
+      username: "MasterReader",
+      readingXpTotal: 1000,
+      readingLevel: expect.any(Number),
+    });
+    expect(rankings[0].email).toBeUndefined();
+  });
 });

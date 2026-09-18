@@ -92,4 +92,58 @@ export class BookRepository {
       data: { coverPath },
     });
   }
+
+  async findTopRankings(limit = 10) {
+    const sessions = await prisma.readingSession.groupBy({
+      by: ["contentId"],
+      where: { contentType: "BOOK" },
+      _count: { id: true },
+      orderBy: {
+        _count: {
+          id: "desc",
+        },
+      },
+      take: limit,
+    });
+
+    const rankedIds = sessions.map((s) => s.contentId);
+    const sessionCountMap = new Map(sessions.map((s) => [s.contentId, s._count.id]));
+
+    const books = await prisma.book.findMany({
+      where: {
+        id: { in: rankedIds },
+      },
+      include: bookWithTagsInclude,
+    });
+
+    const rankedList = books
+      .map((book) => ({
+        book,
+        readersCount: sessionCountMap.get(book.id) ?? 0,
+      }))
+      .sort((a, b) => b.readersCount - a.readersCount);
+
+    if (rankedList.length < limit) {
+      const existingIds = new Set(rankedList.map((r) => r.book.id));
+      const fallbackBooks = await prisma.book.findMany({
+        where: {
+          id: { notIn: Array.from(existingIds) },
+        },
+        include: bookWithTagsInclude,
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: limit - rankedList.length,
+      });
+
+      for (const book of fallbackBooks) {
+        rankedList.push({
+          book,
+          readersCount: 0,
+        });
+      }
+    }
+
+    return rankedList.slice(0, limit);
+  }
 }

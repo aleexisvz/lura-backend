@@ -9,7 +9,7 @@ import { MangaProgressService } from "../reading/manga-progress.service.js";
 import { ReadingSessionRepository } from "../reading/reading-session.repository.js";
 import { ReadingSessionService } from "../reading/reading-session.service.js";
 import { UsersRepository } from "./users.repository.js";
-import type { PublicUserDTO, PublicUserProfileDTO, UserSearchResultDTO } from "./users.types.js";
+import type { PublicUserDTO, PublicUserProfileDTO, UserRankingDTO, UserSearchResultDTO } from "./users.types.js";
 
 const PROFILE_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
 
@@ -158,6 +158,24 @@ export class UsersService {
         profileImageUrl: u.profileImagePath ? this.storage.getPublicUrl(u.profileImagePath) : null,
         readingLevel: levelSnapshot.readingLevel,
         readingXpTotal: levelSnapshot.readingXpTotal,
+      };
+    });
+  }
+
+  async getRankings(limit = 10): Promise<UserRankingDTO[]> {
+    const users = await this.repo.findTopRankings(limit);
+
+    return users.map((u, index) => {
+      const levelSnapshot = buildReadingLevelSnapshot(u.readingXpTotal);
+      return {
+        rank: index + 1,
+        id: u.id,
+        username: u.username,
+        role: u.role,
+        profileImageUrl: u.profileImagePath ? this.storage.getPublicUrl(u.profileImagePath) : null,
+        readingLevel: levelSnapshot.readingLevel,
+        readingXpTotal: levelSnapshot.readingXpTotal,
+        readingTimeTotalSeconds: u.readingTimeTotalSeconds,
       };
     });
   }

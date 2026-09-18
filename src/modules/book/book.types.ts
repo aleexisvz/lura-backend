@@ -26,3 +26,9 @@ export type PublicBookDTO = {
   hasEpub: boolean;
   readerStatus: "READY" | "PROCESSING" | "FAILED";
 };
+
+export type BookRankingDTO = {
+  rank: number;
+  readersCount: number;
+  book: PublicBookDTO;
+};

@@ -55,5 +55,12 @@ export class UsersController {
     const profile = await this.service.getPublicProfile(username);
     return reply.send(profile);
   };
+
+  getRankings = async (req: FastifyRequest, reply: FastifyReply) => {
+    const query = req.query as { limit?: string };
+    const limit = query.limit ? Math.max(1, Math.min(50, parseInt(query.limit, 10) || 5)) : 5;
+    const rankings = await this.service.getRankings(limit);
+    return reply.send(rankings);
+  };
 }
 

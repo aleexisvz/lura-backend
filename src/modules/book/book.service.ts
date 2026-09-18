@@ -29,6 +29,15 @@ export class BookService {
     return this.toPublicBook(book);
   }
 
+  async getRankings(limit = 10) {
+    const list = await this.repo.findTopRankings(limit);
+    return list.map((item, index) => ({
+      rank: index + 1,
+      readersCount: item.readersCount,
+      book: this.toPublicBook(item.book),
+    }));
+  }
+
   private epubCache = new Map<string, { buffer: Buffer; filename: string }>();
 
   async getBookFile(bookId: string) {

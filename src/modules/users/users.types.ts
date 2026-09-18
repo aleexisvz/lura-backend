@@ -66,3 +66,14 @@ export type PublicUserProfileDTO = {
   };
   continueReading: unknown[];
 };
+
+export type UserRankingDTO = {
+  rank: number;
+  id: string;
+  username: string;
+  profileImageUrl: string | null;
+  readingLevel: number;
+  readingXpTotal: number;
+  readingTimeTotalSeconds: number;
+  role: "USER" | "ADMIN";
+};

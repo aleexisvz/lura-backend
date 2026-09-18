@@ -97,4 +97,23 @@ export class UsersRepository {
       },
     });
   }
+
+  findTopRankings(limit = 10) {
+    return prisma.user.findMany({
+      select: {
+        id: true,
+        username: true,
+        role: true,
+        profileImagePath: true,
+        readingXpTotal: true,
+        readingTimeTotalSeconds: true,
+      },
+      take: limit,
+      orderBy: [
+        { readingXpTotal: "desc" },
+        { readingTimeTotalSeconds: "desc" },
+        { createdAt: "asc" },
+      ],
+    });
+  }
 }

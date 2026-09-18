@@ -345,4 +345,44 @@ describe("Book routes (api)", () => {
       details: null,
     });
   });
+
+  it("GET /books/rankings should require auth and return ranked books", async () => {
+    const unauthResponse = await app.inject({
+      method: "GET",
+      url: "/books/rankings",
+    });
+    expect(unauthResponse.statusCode).toBe(401);
+
+    const b1 = await prisma.book.create({
+      data: {
+        title: "Top Book 1",
+        author: "Author One",
+      },
+    });
+    const b2 = await prisma.book.create({
+      data: {
+        title: "Top Book 2",
+        author: "Author Two",
+      },
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/books/rankings?limit=5",
+      headers: buildAuthHeader(app, "USER"),
+    });
+
+    expect(response.statusCode).toBe(200);
+    const rankings = response.json();
+    expect(rankings).toBeInstanceOf(Array);
+    expect(rankings.length).toBeGreaterThanOrEqual(2);
+    expect(rankings[0]).toMatchObject({
+      rank: 1,
+      readersCount: expect.any(Number),
+      book: expect.objectContaining({
+        id: expect.any(String),
+        title: expect.any(String),
+      }),
+    });
+  });
 });
