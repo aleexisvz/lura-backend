@@ -77,9 +77,10 @@ class BookProgressStore {
           : incomingTotal
         : existingTotal;
 
-    // A book is marked complete if explicitly flagged, if reading percentage hits 100%,
+    // A book is marked complete if previously completed, if explicitly flagged, if reading percentage hits 100%,
     // or if the reader reaches/exceeds total pages with at least 95% overall book progress.
     const isCompleted =
+      existing?.completed === true ||
       data.completed === true ||
       progressPercent >= 100 ||
       (typeof currentPage === "number" &&
@@ -140,7 +141,8 @@ class BookProgressStore {
         (typeof b.currentPage === "number" &&
           typeof b.totalPages === "number" &&
           b.totalPages > 1 &&
-          b.currentPage >= b.totalPages)
+          b.currentPage >= b.totalPages &&
+          (b.progressPercent ?? 0) >= 95)
     ).length;
   }
 
