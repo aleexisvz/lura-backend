@@ -223,4 +223,117 @@ describe("Users routes (api)", () => {
     });
     expect(invalidCharResponse.statusCode).toBe(400);
   });
+
+  it("GET /users/search should require auth", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/users/search?q=test",
+    });
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("GET /users/search should return matching users without exposing email", async () => {
+    await prisma.user.createMany({
+      data: [
+        {
+          id: "u1",
+          email: "alexis@secret.com",
+          username: "Alexis_vz",
+          password: "hash",
+          role: "USER",
+          readingXpTotal: 100,
+        },
+        {
+          id: "u2",
+          email: "jose@secret.com",
+          username: "Jose_Dev",
+          password: "hash",
+          role: "USER",
+          readingXpTotal: 50,
+        },
+      ],
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/users/search?q=alexis",
+      headers: buildAuthHeader(app, "USER"),
+    });
+
+    expect(response.statusCode).toBe(200);
+    const data = response.json();
+    expect(Array.isArray(data)).toBe(true);
+    expect(data.length).toBe(1);
+    expect(data[0]).toMatchObject({
+      id: "u1",
+      username: "Alexis_vz",
+      readingXpTotal: 100,
+      readingLevel: expect.any(Number),
+    });
+    expect(data[0].email).toBeUndefined();
+    expect(data[0].password).toBeUndefined();
+  });
+
+  it("GET /users/:username should require auth", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/users/Jose",
+    });
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("GET /users/:username should return 404 when user not found", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/users/non_existent_user_999",
+      headers: buildAuthHeader(app, "USER"),
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({
+      code: "USER_NOT_FOUND",
+    });
+  });
+
+  it("GET /users/:username should return public profile without email or password", async () => {
+    await prisma.user.create({
+      data: {
+        id: "target-user-id",
+        email: "private_jose@test.local",
+        username: "Jose_Reader",
+        password: "secret_hash",
+        role: "USER",
+        readingXpTotal: 350,
+      },
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/users/Jose_Reader",
+      headers: buildAuthHeader(app, "USER"),
+    });
+
+    expect(response.statusCode).toBe(200);
+    const data = response.json();
+    expect(data).toMatchObject({
+      id: "target-user-id",
+      username: "Jose_Reader",
+      role: "USER",
+      readingXpTotal: 350,
+      readingLevel: expect.any(Number),
+      stats: expect.objectContaining({
+        totalSessions: expect.any(Number),
+        totalSeconds: expect.any(Number),
+      }),
+      recentSeries: expect.objectContaining({
+        manga: expect.any(Array),
+        books: expect.any(Array),
+      }),
+      continueReading: expect.any(Array),
+    });
+    expect(data.email).toBeUndefined();
+    expect(data.password).toBeUndefined();
+  });
 });

@@ -4,15 +4,21 @@ import { CloudStorageService } from "../../infrastructure/storage/CloudStorageSe
 import { badRequest, conflict, notFound } from "../../shared/errors/error-factory.js";
 import { getImageContentType } from "../../shared/utils/get-image-content-type.js";
 import { buildReadingLevelSnapshot } from "../reading/reading-xp.js";
+import { MangaProgressRepository } from "../reading/manga-progress.repository.js";
+import { MangaProgressService } from "../reading/manga-progress.service.js";
+import { ReadingSessionRepository } from "../reading/reading-session.repository.js";
+import { ReadingSessionService } from "../reading/reading-session.service.js";
 import { UsersRepository } from "./users.repository.js";
-import type { PublicUserDTO } from "./users.types.js";
+import type { PublicUserDTO, PublicUserProfileDTO, UserSearchResultDTO } from "./users.types.js";
 
 const PROFILE_IMAGE_MAX_BYTES = 2 * 1024 * 1024;
 
 export class UsersService {
   constructor(
     private readonly repo: UsersRepository,
-    private readonly storage: CloudStorageService
+    private readonly storage: CloudStorageService,
+    private readonly readingSessionService = new ReadingSessionService(new ReadingSessionRepository()),
+    private readonly mangaProgressService = new MangaProgressService(new MangaProgressRepository())
   ) {}
 
   async getMe(userId: string): Promise<PublicUserDTO> {
@@ -105,6 +111,55 @@ export class UsersService {
     if (mimetype === "image/webp") return ".webp";
 
     throw badRequest("INVALID_PARAMS", "Invalid profile image file");
+  }
+
+  async getPublicProfile(rawUsername: string): Promise<PublicUserProfileDTO> {
+    const username = rawUsername.trim();
+    const user = await this.repo.findPublicProfileByUsername(username);
+    if (!user) {
+      throw notFound("USER_NOT_FOUND", "Usuario no encontrado");
+    }
+
+    const levelSnapshot = buildReadingLevelSnapshot(user.readingXpTotal);
+
+    const [stats, recentSeries, continueReading] = await Promise.all([
+      this.readingSessionService.getUserReadingStats(user.id),
+      this.readingSessionService.getRecentSeries(user.id, 12),
+      this.mangaProgressService.getContinueReading(user.id),
+    ]);
+
+    return {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      createdAt: user.createdAt,
+      profileImageUrl: user.profileImagePath ? this.storage.getPublicUrl(user.profileImagePath) : null,
+      readingXpTotal: levelSnapshot.readingXpTotal,
+      readingLevel: levelSnapshot.readingLevel,
+      stats,
+      recentSeries,
+      continueReading,
+    };
+  }
+
+  async searchUsers(query: string, limit = 10): Promise<UserSearchResultDTO[]> {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      return [];
+    }
+
+    const users = await this.repo.searchUsers(trimmed, limit);
+
+    return users.map((u) => {
+      const levelSnapshot = buildReadingLevelSnapshot(u.readingXpTotal);
+      return {
+        id: u.id,
+        username: u.username,
+        profileImageUrl: u.profileImagePath ? this.storage.getPublicUrl(u.profileImagePath) : null,
+        readingLevel: levelSnapshot.readingLevel,
+        readingXpTotal: levelSnapshot.readingXpTotal,
+      };
+    });
   }
 
   private toPublicUser(user: {

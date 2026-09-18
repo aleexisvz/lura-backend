@@ -11,6 +11,16 @@ const UpdateUsernameSchema = z.object({
     .regex(/^[\p{L}\p{N}_-]+$/u, "Username can only contain letters, numbers, Kanji/Japanese characters, underscores, and hyphens"),
 });
 
+const SearchUsersQuerySchema = z.object({
+  q: z.string().trim().optional(),
+  query: z.string().trim().optional(),
+  limit: z.coerce.number().int().min(1).max(50).optional(),
+});
+
+const GetPublicProfileParamsSchema = z.object({
+  username: z.string().trim().min(1),
+});
+
 export class UsersController {
   constructor(private readonly service: UsersService) {}
 
@@ -31,6 +41,19 @@ export class UsersController {
     const userId = (req.user as { sub: string }).sub;
     const result = await this.service.uploadProfileImage(req, userId);
     return reply.send(result);
+  };
+
+  searchUsers = async (req: FastifyRequest, reply: FastifyReply) => {
+    const { q, query, limit } = SearchUsersQuerySchema.parse(req.query);
+    const searchTerm = q ?? query ?? "";
+    const users = await this.service.searchUsers(searchTerm, limit ?? 10);
+    return reply.send(users);
+  };
+
+  getPublicProfile = async (req: FastifyRequest, reply: FastifyReply) => {
+    const { username } = GetPublicProfileParamsSchema.parse(req.params);
+    const profile = await this.service.getPublicProfile(username);
+    return reply.send(profile);
   };
 }
 
