@@ -55,4 +55,16 @@ export class ReadingSessionController {
         const result = await this.service.getRecentSeries(userId, limit ?? 12);
         return reply.send(result);
     };
+
+    getMangaReaders = async (req: FastifyRequest, reply: FastifyReply) => {
+        const { mangaId } = req.params as { mangaId: string };
+        const readers = await this.service.getRecentReaders("MANGA", mangaId, 10);
+        return reply.send(readers);
+    };
+
+    getBookReaders = async (req: FastifyRequest, reply: FastifyReply) => {
+        const { bookId } = req.params as { bookId: string };
+        const readers = await this.service.getRecentReaders("BOOK", bookId, 10);
+        return reply.send(readers);
+    };
 }

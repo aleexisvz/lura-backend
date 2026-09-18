@@ -300,4 +300,31 @@ describe("ReadingSession routes (api)", () => {
       details: null,
     });
   });
+
+  it("GET /manga/:mangaId/readers should return list of readers", async () => {
+    await prisma.readingSession.create({
+      data: {
+        userId: "user-test-id",
+        contentType: "MANGA",
+        contentId: "manga-readers-test",
+        startedAt: new Date(),
+      },
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/manga/manga-readers-test/readers",
+      headers: buildAuthHeader(app, "USER"),
+    });
+
+    expect(response.statusCode).toBe(200);
+    const data = response.json();
+    expect(Array.isArray(data)).toBe(true);
+    expect(data.length).toBe(1);
+    expect(data[0]).toMatchObject({
+      id: "user-test-id",
+      username: "user_test",
+      readingLevel: expect.any(Number),
+    });
+  });
 });

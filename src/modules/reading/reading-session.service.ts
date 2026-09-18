@@ -199,4 +199,19 @@ export class ReadingSessionService {
             })),
         };
     }
+
+    async getRecentReaders(contentType: "MANGA" | "BOOK", contentId: string, limit = 10) {
+        const readers = await this.repo.findRecentReaders(contentType, contentId, limit);
+        return readers.map(({ user, lastReadAt }) => {
+            const levelSnapshot = buildReadingLevelSnapshot(user.readingXpTotal);
+            return {
+                id: user.id,
+                username: user.username,
+                profileImageUrl: user.profileImagePath ? this.storage.getPublicUrl(user.profileImagePath) : null,
+                readingLevel: levelSnapshot.readingLevel,
+                readingXpTotal: levelSnapshot.readingXpTotal,
+                lastReadAt,
+            };
+        });
+    }
 }

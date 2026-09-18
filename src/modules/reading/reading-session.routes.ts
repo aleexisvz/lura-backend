@@ -32,4 +32,16 @@ export async function readingSessionRoutes(app: FastifyInstance) {
         { preHandler: requireAuth },
         controller.getRecentSeries
     );
+
+    app.get(
+        "/manga/:mangaId/readers",
+        { preHandler: requireAuth },
+        controller.getMangaReaders
+    );
+
+    app.get(
+        "/books/:bookId/readers",
+        { preHandler: requireAuth },
+        controller.getBookReaders
+    );
 }

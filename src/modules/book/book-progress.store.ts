@@ -150,6 +150,19 @@ class BookProgressStore {
     const books = this.getAllForUser(userId);
     return books.reduce((sum, b) => sum + (b.currentPage ?? 1), 0);
   }
+
+  getUsersForBook(bookId: string): Array<{ userId: string; updatedAt: string }> {
+    const userMap = new Map<string, string>();
+    for (const record of this.store.values()) {
+      if (record.bookId === bookId && record.userId && record.userId !== "anon") {
+        const existing = userMap.get(record.userId);
+        if (!existing || new Date(record.updatedAt).getTime() > new Date(existing).getTime()) {
+          userMap.set(record.userId, record.updatedAt);
+        }
+      }
+    }
+    return Array.from(userMap.entries()).map(([userId, updatedAt]) => ({ userId, updatedAt }));
+  }
 }
 
 export const bookProgressStore = new BookProgressStore();
