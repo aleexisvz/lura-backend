@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "../../../src/infrastructure/database/prisma.js";
 import { buildApp } from "../../../src/app.js";
 import { buildAuthHeader } from "../../helpers/auth.js";
@@ -128,36 +128,43 @@ describe("ReadingSession routes (api)", () => {
   });
 
   it("GET /users/me/reading-stats should return zero stats when no sessions", async () => {
-    const response = await app.inject({
-      method: "GET",
-      url: "/users/me/reading-stats",
-      headers: buildAuthHeader(app, "USER"),
-    });
+    // Pin the clock to a weekday: the "Hot Weekend" XP multiplier applies on weekends.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-28T12:00:00Z"));
+    try {
+      const response = await app.inject({
+        method: "GET",
+        url: "/users/me/reading-stats",
+        headers: buildAuthHeader(app, "USER"),
+      });
 
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({
-      totalSessions: 0,
-      totalMinutes: 0,
-      totalSeconds: 0,
-      mangaSeconds: 0,
-      bookSeconds: 0,
-      totalPagesRead: 0,
-      mangaPagesRead: 0,
-      bookPagesRead: 0,
-      totalVolumesRead: 0,
-      totalMangasRead: 0,
-      totalSeriesRead: 0,
-      totalBooksRead: 0,
-      readingLevel: 1,
-      readingXpTotal: 0,
-      xpInLevel: 0,
-      xpToNextLevel: 20,
-      xpProgressPercent: 0,
-      activeXpEvent: null,
-      isHotWeekend: false,
-      xpMultiplier: 1,
-      xpPerMinute: 2,
-    });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({
+        totalSessions: 0,
+        totalMinutes: 0,
+        totalSeconds: 0,
+        mangaSeconds: 0,
+        bookSeconds: 0,
+        totalPagesRead: 0,
+        mangaPagesRead: 0,
+        bookPagesRead: 0,
+        totalVolumesRead: 0,
+        totalMangasRead: 0,
+        totalSeriesRead: 0,
+        totalBooksRead: 0,
+        readingLevel: 1,
+        readingXpTotal: 0,
+        xpInLevel: 0,
+        xpToNextLevel: 20,
+        xpProgressPercent: 0,
+        activeXpEvent: null,
+        isHotWeekend: false,
+        xpMultiplier: 1,
+        xpPerMinute: 2,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("GET /users/me/reading-stats should return accumulated stats", async () => {
