@@ -22,7 +22,7 @@
 - Gamified XP rewards system with configurable caps and "Hot Weekend" 2x multipliers.
 - Unified reading stats combining manga and EPUB reading metrics.
 - Volume completion tracking with replay support that preserves historical pages read.
-- Isolated book progress store persisting CFI locators, spine indices, and percentage completion.
+- Per-user book progress persisted in PostgreSQL (`BookProgress`), storing CFI locators, spine indices, and percentage completion.
 
 ### 5. Logging & Diagnostics
 - Pino logger integrated with Fastify.

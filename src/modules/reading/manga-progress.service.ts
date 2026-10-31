@@ -2,7 +2,7 @@ import { MangaProgressRepository } from "./manga-progress.repository.js";
 import { VolumeCompletionRepository } from "./volume-completion.repository.js";
 import { notFound, unprocessableEntity } from "../../shared/errors/error-factory.js";
 import { CloudStorageService } from "../../infrastructure/storage/CloudStorageService.js";
-import { bookProgressStore } from "../book/book-progress.store.js";
+import { BookProgressService } from "../book/book-progress.service.js";
 import { prisma } from "../../infrastructure/database/prisma.js";
 
 function formatSectionTitle(href?: string): string {
@@ -22,7 +22,8 @@ export class MangaProgressService {
     constructor(
         private repo: MangaProgressRepository,
         private completionRepo = new VolumeCompletionRepository(),
-        private storage = new CloudStorageService()
+        private storage = new CloudStorageService(),
+        private bookProgress = new BookProgressService()
     ) { }
 
     async getProgress(userId: string, mangaId: string) {
@@ -182,7 +183,8 @@ export class MangaProgressService {
             });
 
         // Fetch book reading progress for user
-        const bookEntries = bookProgressStore.getAllForUser(userId);
+        // Completed books are excluded in the query; at most 20 items are returned below.
+        const bookEntries = await this.bookProgress.findInProgressForUser(userId, 20);
         let bookItems: Array<{
             contentType: "BOOK";
             bookId: string;
@@ -205,16 +207,6 @@ export class MangaProgressService {
             const bookMap = new Map(books.map((b) => [b.id, b]));
 
             bookItems = bookEntries
-                .filter((entry) => {
-                    const isCompleted =
-                        entry.completed === true ||
-                        (entry.progressPercent ?? 0) >= 100 ||
-                        (typeof entry.currentPage === "number" &&
-                            typeof entry.totalPages === "number" &&
-                            entry.totalPages > 1 &&
-                            entry.currentPage >= entry.totalPages);
-                    return !isCompleted;
-                })
                 .map((entry) => {
                     const book = bookMap.get(entry.bookId);
                     if (!book) return null;

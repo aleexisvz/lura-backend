@@ -1,5 +1,7 @@
 import { prisma } from "../../infrastructure/database/prisma.js";
-import { bookProgressStore } from "../book/book-progress.store.js";
+import { BookProgressRepository } from "../book/book-progress.repository.js";
+
+const bookProgressRepo = new BookProgressRepository();
 
 export type RecentSeriesRawItem = {
     contentId: string;
@@ -149,7 +151,7 @@ export class ReadingSessionRepository {
     }
 
     async countDistinctCompletedBooksByUser(userId: string) {
-        return bookProgressStore.countCompletedBooksForUser(userId);
+        return bookProgressRepo.countCompletedByUser(userId);
     }
 
     async findRecentMangaSeriesByUser(userId: string, limit: number): Promise<RecentSeriesRawItem[]> {
@@ -376,7 +378,7 @@ export class ReadingSessionRepository {
                 user: mp.User,
             }));
         } else if (contentType === "BOOK") {
-            const bookUserRecords = bookProgressStore.getUsersForBook(contentId);
+            const bookUserRecords = await bookProgressRepo.findReadersForBook(contentId, 40);
             if (bookUserRecords.length > 0) {
                 const userIds = bookUserRecords.map((r) => r.userId);
                 const users = await prisma.user.findMany({
