@@ -4,7 +4,7 @@ import { VolumeCompletionRepository } from "./volume-completion.repository.js";
 import { buildReadingLevelSnapshot, calculateSessionXp, getXpMultiplierInfo } from "./reading-xp.js";
 import { AppError } from "../../shared/errors/AppError.js";
 import { CloudStorageService } from "../../infrastructure/storage/CloudStorageService.js";
-import { bookProgressStore } from "../book/book-progress.store.js";
+import { BookProgressService } from "../book/book-progress.service.js";
 
 const DEFAULT_AUTO_CLOSED_SESSION_CAP_SECONDS = 30 * 60;
 
@@ -22,7 +22,8 @@ export class ReadingSessionService {
         private repo: ReadingSessionRepository,
         private progressRepo: MangaProgressRepository = new MangaProgressRepository(),
         private completionRepo: VolumeCompletionRepository = new VolumeCompletionRepository(),
-        private storage: CloudStorageService = new CloudStorageService()
+        private storage: CloudStorageService = new CloudStorageService(),
+        private bookProgress: BookProgressService = new BookProgressService()
     ) { }
 
     async startSession(
@@ -124,6 +125,7 @@ export class ReadingSessionService {
             totalMangasRead,
             totalBooksRead,
             readingXpTotal,
+            bookPagesSum,
         ] = await Promise.all([
             this.repo.getTotalReadingTimeByUser(userId),
             this.repo.getTotalReadingTimeByUserAndType(userId, "MANGA"),
@@ -134,6 +136,7 @@ export class ReadingSessionService {
             this.completionRepo.countCompletedMangasByUser(userId),
             this.repo.countDistinctCompletedBooksByUser(userId),
             this.repo.getUserReadingXpTotal(userId),
+            this.bookProgress.sumPagesForUser(userId),
         ]);
 
         const totalSeconds = total._sum.durationSeconds ?? 0;
@@ -143,15 +146,8 @@ export class ReadingSessionService {
         // Aggregate pages read across formats:
         // For manga, combine current progress page index with historicalPagesRead
         // so that volume resets for re-reading do not decrease lifetime statistics.
-        const bookPagesSum = bookProgressStore.sumPagesForUser(userId);
         const mangaPagesRead = (pagesSum._sum.page ?? 0) + (pagesSum._sum.historicalPagesRead ?? 0);
         const totalPagesRead = mangaPagesRead + bookPagesSum;
-
-        // Reconcile completed book counts between database session records and local progress store
-        const completedBooksCount = Math.max(
-            totalBooksRead,
-            bookProgressStore.countCompletedBooksForUser(userId)
-        );
 
         return {
             totalSessions,
@@ -165,7 +161,7 @@ export class ReadingSessionService {
             totalVolumesRead,
             totalMangasRead,
             totalSeriesRead: totalMangasRead,
-            totalBooksRead: completedBooksCount,
+            totalBooksRead,
             readingLevel: levelSnapshot.readingLevel,
             readingXpTotal: levelSnapshot.readingXpTotal,
             xpInLevel: levelSnapshot.xpInLevel,

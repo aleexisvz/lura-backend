@@ -1,7 +1,7 @@
 # Next Steps — Lura Platform
 
 ## Short Term
-- **Database Persistence for Book Progress**: Migrate file-based `book-progress.json` store into a dedicated PostgreSQL Prisma model.
+- ~~**Database Persistence for Book Progress**~~: Done. Progress lives in the `BookProgress` Prisma model; `storage/book-progress.json` was imported once and is no longer read.
 - **Bookmarks & Annotations Sync**: Add dedicated endpoints to sync book annotations, highlights, and bookmarks across devices.
 
 ## Medium Term

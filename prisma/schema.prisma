@@ -28,6 +28,7 @@ model User {
   readingSessions   ReadingSession[]
   mangaProgress     MangaProgress[]
   volumeCompletions VolumeCompletion[]
+  bookProgress      BookProgress[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -69,9 +70,37 @@ model Book {
   epubPath    String?
 
   bookTags    BookTag[]
+  bookProgress BookProgress[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model BookProgress {
+  id              String    @id @default(cuid())
+  userId          String
+  bookId          String
+
+  spineIndex      Int       @default(0)
+  sectionHref     String    @default("")
+  locator         String    @default("")
+  progressPercent Float     @default(0)
+  currentPage     Int?
+  totalPages      Int?
+  title           String?
+  coverUrl        String?
+  chapterTitle    String?
+  completed       Boolean   @default(false)
+  completedAt     DateTime?
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book            Book      @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([userId, bookId])
+  @@index([bookId])
 }
 
 model Tag {

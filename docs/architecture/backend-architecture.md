@@ -8,7 +8,7 @@ src/
 ├── infrastructure/     # External integrations: Cloudflare R2 / S3 (CloudStorageService), DB adapter
 ├── modules/
 │   ├── auth/           # Registration, login, JWT issuance, admin promotion
-│   ├── book/           # EPUB book catalog, uploads, covers, and reading progress store
+│   ├── book/           # EPUB book catalog, uploads, covers, and per-user reading progress (`BookProgress`)
 │   ├── collections/    # User custom collections and shelf organization
 │   ├── ingestion/      # Filesystem directory watchers and automated chapter import
 │   ├── manga/          # Manga series, volumes, pages, covers, rankings, and featured queries

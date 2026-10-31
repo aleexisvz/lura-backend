@@ -6,8 +6,9 @@ import { BookController } from "./book.controller.js";
 import { BookRepository } from "./book.repository.js";
 import { BookService } from "./book.service.js";
 import { TagsRepository } from "../tags/tags.repository.js";
-
-import { bookProgressStore } from "./book-progress.store.js";
+import { BookProgressRepository } from "./book-progress.repository.js";
+import { BookProgressService } from "./book-progress.service.js";
+import { BookProgressController } from "./book-progress.controller.js";
 
 export async function bookRoutes(app: FastifyInstance) {
   const repo = new BookRepository();
@@ -15,6 +16,8 @@ export async function bookRoutes(app: FastifyInstance) {
   const tagsRepo = new TagsRepository();
   const service = new BookService(repo, storage, tagsRepo);
   const controller = new BookController(service);
+  const progressService = new BookProgressService(new BookProgressRepository());
+  const progressController = new BookProgressController(progressService);
 
   app.post("/", { preHandler: requireAdmin }, controller.createBook);
   app.patch("/:bookId", { preHandler: requireAdmin }, controller.updateBook);
@@ -25,32 +28,6 @@ export async function bookRoutes(app: FastifyInstance) {
   app.get("/:bookId", { preHandler: requireAuth }, controller.getBookById);
   app.get("/:bookId/file", { preHandler: requireAuth }, controller.getBookFile);
 
-  app.get("/:bookId/progress", { preHandler: requireAuth }, async (req, reply) => {
-    const { bookId } = req.params as { bookId: string };
-    const userId = (req.user as any)?.sub || (req.user as any)?.id || "anon";
-    const progress = bookProgressStore.get(userId, bookId);
-    if (!progress) {
-      return reply.send(null);
-    }
-    return reply.send(progress);
-  });
-
-  app.put("/:bookId/progress", { preHandler: requireAuth }, async (req, reply) => {
-    const { bookId } = req.params as { bookId: string };
-    const userId = (req.user as any)?.sub || (req.user as any)?.id || "anon";
-    const body = req.body as any;
-    const record = bookProgressStore.save(userId, bookId, {
-      spineIndex: Number(body?.spineIndex) || 0,
-      sectionHref: String(body?.sectionHref || ""),
-      locator: String(body?.locator || ""),
-      progressPercent: Math.min(100, Math.max(0, Number(body?.progressPercent) || 0)),
-      currentPage: body?.currentPage !== undefined ? Number(body.currentPage) : undefined,
-      totalPages: body?.totalPages !== undefined ? Number(body.totalPages) : undefined,
-      title: body?.title ? String(body.title) : undefined,
-      coverUrl: body?.coverUrl !== undefined ? (body.coverUrl ? String(body.coverUrl) : null) : undefined,
-      chapterTitle: body?.chapterTitle ? String(body.chapterTitle) : undefined,
-      completed: body?.completed === true,
-    });
-    return reply.send(record);
-  });
+  app.get("/:bookId/progress", { preHandler: requireAuth }, progressController.getProgress);
+  app.put("/:bookId/progress", { preHandler: requireAuth }, progressController.saveProgress);
 }
