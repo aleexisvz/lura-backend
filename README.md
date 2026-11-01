@@ -118,6 +118,18 @@ El servidor iniciará por defecto en `http://localhost:3001`.
 | `npm run prisma:generate` | Regenera el cliente de Prisma |
 | `npm run prisma:migrate` | Aplica migraciones pendientes en la base de datos |
 
+### Pruebas con base de datos local
+
+Los tests pueden correr contra un Postgres local, sin tocar la base de Neon:
+
+```bash
+docker compose up -d
+DATABASE_URL_TEST=postgresql://postgres:postgres@localhost:5432/lura_test npx vitest run
+docker compose down
+```
+
+`docker-compose.yml` usa la misma imagen y credenciales que el CI.
+
 ---
 
 ## Contrato de Errores
