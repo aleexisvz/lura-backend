@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Readable } from "node:stream";
 import path from "node:path";
-import { BookService } from "../../../src/modules/book/book.service.js";
+import { BookService, EPUB_CACHE_MAX_BYTES } from "../../../src/modules/book/book.service.js";
 
 describe("BookService (unit)", () => {
   const repo = {
@@ -196,5 +196,106 @@ describe("BookService (unit)", () => {
       filename: "Dune.epub",
     });
     expect(storage.getFileBuffer).toHaveBeenCalledTimes(1);
+  });
+
+  describe("EPUB cache limits", () => {
+    // One shared buffer is enough: the cache counts buffer.length, not identity.
+    const sizedBuffer = (fraction: number) => Buffer.alloc(Math.floor(EPUB_CACHE_MAX_BYTES * fraction));
+
+    const useBooks = () =>
+      repo.findBookById.mockImplementation(async (id: string) => ({
+        id,
+        title: id,
+        epubPath: `books/${id}/book.epub`,
+        bookTags: [],
+      }));
+
+    const upload = (bookId: string) => {
+      storage.resolveBookEpubPath.mockReturnValue(`/storage/books/${bookId}/book.epub`);
+      const req = {
+        file: vi.fn().mockResolvedValue({
+          filename: "book.epub",
+          mimetype: "application/epub+zip",
+          file: Readable.from(["bytes"]),
+        }),
+      };
+      return service.uploadEpub(req as any, bookId);
+    };
+
+    it("evicts the least recently used EPUB when the byte budget is exceeded", async () => {
+      useBooks();
+      storage.getFileBuffer.mockResolvedValue(sizedBuffer(0.6));
+
+      await service.getBookFile("a"); // cache: a (60%)
+      await service.getBookFile("b"); // 120% > 100%: evicts a
+      await service.getBookFile("b"); // hit
+      expect(storage.getFileBuffer).toHaveBeenCalledTimes(2);
+
+      await service.getBookFile("a"); // a was evicted: read again, evicts b
+      expect(storage.getFileBuffer).toHaveBeenCalledTimes(3);
+    });
+
+    it("refreshes a book on access, so the untouched one is evicted first", async () => {
+      useBooks();
+      storage.getFileBuffer.mockResolvedValue(sizedBuffer(0.3));
+
+      await service.getBookFile("a");
+      await service.getBookFile("b");
+      await service.getBookFile("c"); // 90%, all fit
+      await service.getBookFile("a"); // hit: a becomes most recent (order b, c, a)
+      await service.getBookFile("d"); // 120%: evicts b, the least recent
+      expect(storage.getFileBuffer).toHaveBeenCalledTimes(4);
+
+      await service.getBookFile("a"); // hit
+      await service.getBookFile("c"); // hit
+      expect(storage.getFileBuffer).toHaveBeenCalledTimes(4);
+
+      await service.getBookFile("b"); // miss
+      expect(storage.getFileBuffer).toHaveBeenCalledTimes(5);
+    });
+
+    it("serves but does not cache a file larger than the whole budget", async () => {
+      useBooks();
+      storage.getFileBuffer.mockResolvedValue({ length: EPUB_CACHE_MAX_BYTES + 1 } as Buffer);
+
+      await service.getBookFile("a");
+      await service.getBookFile("a");
+      expect(storage.getFileBuffer).toHaveBeenCalledTimes(2);
+    });
+
+    it("uploadEpub() drops the cached EPUB, so the next read returns the new file", async () => {
+      useBooks();
+      storage.getFileBuffer.mockResolvedValue(Buffer.from("old-epub"));
+      await service.getBookFile("a");
+
+      await upload("a");
+
+      storage.getFileBuffer.mockResolvedValue(Buffer.from("new-epub"));
+      const after = await service.getBookFile("a");
+      expect(after.buffer.toString()).toBe("new-epub");
+      expect(storage.getFileBuffer).toHaveBeenCalledTimes(2);
+    });
+
+    it("does not cache a read that started before an upload finished", async () => {
+      useBooks();
+      let finishRead!: (buffer: Buffer) => void;
+      storage.getFileBuffer.mockReturnValueOnce(
+        new Promise<Buffer>((resolve) => {
+          finishRead = resolve;
+        })
+      );
+
+      const pending = service.getBookFile("a");
+      await vi.waitFor(() => expect(storage.getFileBuffer).toHaveBeenCalledTimes(1));
+
+      await upload("a");
+      finishRead(Buffer.from("old-epub"));
+      await pending;
+
+      storage.getFileBuffer.mockResolvedValue(Buffer.from("new-epub"));
+      const after = await service.getBookFile("a");
+      expect(after.buffer.toString()).toBe("new-epub");
+      expect(storage.getFileBuffer).toHaveBeenCalledTimes(2);
+    });
   });
 });
