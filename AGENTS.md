@@ -46,9 +46,13 @@ This repository is the **backend API**.
 
 ## Git Workflow
 - Write commit messages in **English** using Conventional Commits (`feat:`, `fix:`, `perf:`, `style:`).
-- **Do NOT commit until the user explicitly confirms the change works.**
-- If a fix requires multiple iterations, keep changes local and squash into a single atomic commit once approved.
-- Work on descriptive branches (`feat/name`, `fix/name`). Merge to `main` with fast-forward when complete.
+- Work in three levels:
+  - **Level 3 — branch / PR:** one descriptive branch (`feat/name`, `fix/name`) per PR. It is merged into `main` when complete.
+  - **Level 2 — solution:** a group of commits that solves part or all of the branch goal.
+  - **Level 1 — commit:** one small, logical change. Several level 1 commits form a level 2 solution, and several level 2 solutions form a level 3 branch.
+- Split work into logical commits. Do not squash them and do not commit every line.
+- Commits may be made locally as the work advances. Ask the user for approval before `git push`, opening a PR and merging.
+- Merge PRs with a rebase merge (`gh pr merge --rebase`), not squash or merge commits, so every level 1 commit reaches `main`.
 
 ## Before Implementing
 Read these docs if they exist:
