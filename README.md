@@ -37,8 +37,9 @@ Desarrollado con Fastify v5, Prisma v7 + PostgreSQL, JWT para autenticación, Cl
 
 ## Requisitos Previos
 
-- Node.js 20+
-- pnpm 11+ o npm
+- Node.js 22+ (el CI usa Node 22)
+- pnpm 10 (la versión exacta está fijada en `packageManager` de `package.json`)
+- Docker (para la base de datos de pruebas local, ver abajo)
 - PostgreSQL disponible (local o en la nube, ej. Neon)
 - Cuenta o bucket de Cloudflare R2 (compatible con API S3)
 
@@ -86,19 +87,19 @@ pnpm install
 2. **Generar cliente de Prisma**:
 
 ```bash
-npm run prisma:generate
+pnpm run prisma:generate
 ```
 
 3. **Ejecutar migraciones de base de datos**:
 
 ```bash
-npm run prisma:migrate
+pnpm run prisma:migrate
 ```
 
 4. **Iniciar servidor en modo desarrollo**:
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 El servidor iniciará por defecto en `http://localhost:3001`.
@@ -109,14 +110,15 @@ El servidor iniciará por defecto en `http://localhost:3001`.
 
 | Comando | Descripción |
 |---|---|
-| `npm run dev` | Inicia el servidor con hot-reload (`tsx watch`) |
-| `npm test` | Ejecuta la suite de pruebas automatizadas con Vitest |
-| `npm run test:watch` | Ejecuta tests en modo interactivo/watch |
-| `npm run test:coverage` | Genera reporte de cobertura de código |
-| `npm run build` | Compila el código TypeScript a JavaScript (`dist/`) |
-| `npm start` | Ejecuta la aplicación compilada en producción |
-| `npm run prisma:generate` | Regenera el cliente de Prisma |
-| `npm run prisma:migrate` | Aplica migraciones pendientes en la base de datos |
+| `pnpm run dev` | Inicia el servidor con hot-reload (`tsx watch`) |
+| `pnpm test` | Ejecuta la suite de pruebas automatizadas con Vitest |
+| `pnpm run test:watch` | Ejecuta tests en modo interactivo/watch |
+| `pnpm run test:coverage` | Genera reporte de cobertura de código |
+| `pnpm run typecheck` | Verifica tipos con TypeScript (`tsc --noEmit`) |
+| `pnpm run build` | Compila el código TypeScript a JavaScript (`dist/`) |
+| `pnpm start` | Ejecuta la aplicación compilada en producción |
+| `pnpm run prisma:generate` | Regenera el cliente de Prisma |
+| `pnpm run prisma:migrate` | Aplica migraciones pendientes en la base de datos |
 
 ### Pruebas con base de datos local
 
@@ -124,7 +126,7 @@ Los tests usan un Postgres local (`localhost:5432/lura_test`), nunca la base de 
 
 ```bash
 docker compose up -d
-npx vitest run
+pnpm test
 docker compose down
 ```
 
