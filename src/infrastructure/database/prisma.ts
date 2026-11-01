@@ -49,3 +49,9 @@ const adapter = new PrismaPg(pool);
 // the same PrismaClient instance and therefore the same pool.
 export const prisma = new PrismaClient({ adapter });
 
+// Closes Prisma and the underlying pg pool. Call once, when the process exits.
+export async function disconnectDatabase() {
+  await prisma.$disconnect();
+  await pool.end();
+}
+

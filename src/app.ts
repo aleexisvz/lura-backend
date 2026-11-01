@@ -175,7 +175,11 @@ export async function buildApp() {
   await app.register(mangaRoutes, { prefix: "/manga" })
   await app.register(tagsRoutes, { prefix: "/tags" })
 
-  startReadingSessionCronJobs();
+  const purgeTask = startReadingSessionCronJobs();
+  // Stop scheduled jobs when the server closes, so no job starts during shutdown.
+  app.addHook("onClose", async () => {
+    await purgeTask.stop();
+  });
 
   return app;
 }
