@@ -120,15 +120,15 @@ El servidor iniciará por defecto en `http://localhost:3001`.
 
 ### Pruebas con base de datos local
 
-Los tests pueden correr contra un Postgres local, sin tocar la base de Neon:
+Los tests usan un Postgres local (`localhost:5432/lura_test`), nunca la base de Neon. Antes de correrlos, levanta la base:
 
 ```bash
 docker compose up -d
-DATABASE_URL_TEST=postgresql://postgres:postgres@localhost:5432/lura_test npx vitest run
+npx vitest run
 docker compose down
 ```
 
-`docker-compose.yml` usa la misma imagen y credenciales que el CI.
+`docker-compose.yml` usa la misma imagen y credenciales que el CI. Si quieres usar otra base de pruebas, define `DATABASE_URL_TEST`; debe terminar en `_test`.
 
 ---
 
