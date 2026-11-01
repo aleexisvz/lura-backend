@@ -7,6 +7,11 @@ import { BookRepository } from "./book.repository.js";
 import type { CreateBookDTO, PublicBookDTO, UpdateBookDTO } from "./book.types.js";
 import { TagsRepository } from "../tags/tags.repository.js";
 
+type CachedEpub = { buffer: Buffer; filename: string };
+
+// Upper bound for all EPUB buffers kept in memory at the same time.
+export const EPUB_CACHE_MAX_BYTES = 200 * 1024 * 1024;
+
 export class BookService {
   constructor(
     private repo: BookRepository,
@@ -38,14 +43,22 @@ export class BookService {
     }));
   }
 
-  private epubCache = new Map<string, { buffer: Buffer; filename: string }>();
+  // In-memory EPUB cache, bounded by total bytes and evicted least recently used.
+  private epubCache = new Map<string, CachedEpub>();
+  private epubCacheBytes = 0;
+  // Bumped on every upload, so a read that started before the upload is not cached.
+  private epubVersions = new Map<string, number>();
 
   async getBookFile(bookId: string) {
     const cached = this.epubCache.get(bookId);
     if (cached) {
+      // Re-insert so this book becomes the most recently used entry.
+      this.epubCache.delete(bookId);
+      this.epubCache.set(bookId, cached);
       return cached;
     }
 
+    const version = this.epubVersions.get(bookId) ?? 0;
     const book = await this.repo.findBookById(bookId);
 
     if (!book || !book.epubPath) {
@@ -57,8 +70,40 @@ export class BookService {
       buffer,
       filename: `${book.title}.epub`,
     };
-    this.epubCache.set(bookId, result);
+    if ((this.epubVersions.get(bookId) ?? 0) === version) {
+      this.cacheEpub(bookId, result);
+    }
     return result;
+  }
+
+  private cacheEpub(bookId: string, entry: CachedEpub) {
+    this.removeCachedEpub(bookId);
+    // A single file larger than the whole budget is served but never cached.
+    if (entry.buffer.length > EPUB_CACHE_MAX_BYTES) {
+      return;
+    }
+
+    this.epubCache.set(bookId, entry);
+    this.epubCacheBytes += entry.buffer.length;
+
+    while (this.epubCacheBytes > EPUB_CACHE_MAX_BYTES) {
+      const leastRecentlyUsed = this.epubCache.keys().next().value;
+      if (leastRecentlyUsed === undefined) break;
+      this.removeCachedEpub(leastRecentlyUsed);
+    }
+  }
+
+  private removeCachedEpub(bookId: string) {
+    const entry = this.epubCache.get(bookId);
+    if (!entry) return;
+
+    this.epubCacheBytes -= entry.buffer.length;
+    this.epubCache.delete(bookId);
+  }
+
+  private invalidateEpub(bookId: string) {
+    this.removeCachedEpub(bookId);
+    this.epubVersions.set(bookId, (this.epubVersions.get(bookId) ?? 0) + 1);
   }
 
   async createBook(data: CreateBookDTO) {
@@ -109,7 +154,7 @@ export class BookService {
 
     const relativePath = path.posix.join("books", bookId, "book.epub");
     await this.repo.updateBookEpubPath(bookId, relativePath);
-    this.epubCache.delete(bookId);
+    this.invalidateEpub(bookId);
 
     return { uploaded: true };
   }
