@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "packageManager": "pnpm@10.34.9",
   "type": "module",
   "scripts": {
     "test": "vitest run",
