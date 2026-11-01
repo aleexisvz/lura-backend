@@ -6,7 +6,7 @@ const repo = new ReadingSessionRepository();
 
 export function startReadingSessionCronJobs() {
     // Run every day at 03:00 AM
-    cron.schedule("0 3 * * *", async () => {
+    const purgeTask = cron.schedule("0 3 * * *", async () => {
         try {
             logger.info("[Cron] Starting reading session purge...");
             const deletedCount = await repo.purgeOldSessions(30);
@@ -17,4 +17,5 @@ export function startReadingSessionCronJobs() {
     });
 
     logger.info("[Cron] Reading session purge job scheduled (03:00 AM daily).");
+    return purgeTask;
 }
