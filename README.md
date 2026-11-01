@@ -77,10 +77,10 @@ READING_XP_WEEKEND_MULTIPLIER=2
 
 ## Instalación y Arranque
 
-1. **Instalar dependencias**:
+1. **Instalar dependencias** (el proyecto usa pnpm, ver `packageManager` en `package.json`):
 
 ```bash
-npm install
+pnpm install
 ```
 
 2. **Generar cliente de Prisma**:
