@@ -1,26 +1,7 @@
 import "dotenv/config";
+import { resolveTestDatabaseUrl } from "./test-database-url.js";
 
-function deriveTestDatabaseUrl(rawDatabaseUrl: string): string {
-  const parsed = new URL(rawDatabaseUrl);
-  const dbName = parsed.pathname.replace(/^\//, "");
-
-  if (!dbName) {
-    throw new Error("DATABASE_URL must include a database name");
-  }
-
-  const testDbName = dbName.endsWith("_test") ? dbName : `${dbName}_test`;
-  parsed.pathname = `/${testDbName}`;
-
-  return parsed.toString();
-}
-
-const rawDatabaseUrl = process.env["DATABASE_URL"];
-if (!rawDatabaseUrl) {
-  throw new Error("DATABASE_URL is required to initialize test environment");
-}
-
-const testDatabaseUrl =
-  process.env["DATABASE_URL_TEST"] ?? deriveTestDatabaseUrl(rawDatabaseUrl);
+const testDatabaseUrl = resolveTestDatabaseUrl();
 
 process.env["NODE_ENV"] = "test";
 process.env["DATABASE_URL_TEST"] = testDatabaseUrl;
