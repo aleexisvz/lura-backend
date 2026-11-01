@@ -18,6 +18,15 @@ All API errors (Fastify validation, route errors, business logic exceptions, and
 
 ---
 
+## Health (`/health`)
+
+No authentication, and excluded from the rate limit. Intended for monitors and hosting platforms.
+
+- `GET /health` — Liveness: the process is running. Returns `{ "status": "ok" }`.
+- `GET /health/ready` — Readiness: runs `SELECT 1` on the database. Returns `{ "status": "ok", "checks": { "database": "ok" } }` with 200, or 503 with `{ "code": "DATABASE_UNAVAILABLE", "message": "Database is unavailable", "details": null }`. The database error itself is logged, not returned.
+
+---
+
 ## Authentication (`/auth`)
 
 - `POST /auth/register` — Register a new account (`username`, `email`, `password`).
@@ -31,6 +40,9 @@ All API errors (Fastify validation, route errors, business logic exceptions, and
 - `GET /users/me` — Retrieve the authenticated user profile, stats, and role.
 - `PATCH /users/me` — Update user profile details (e.g. `username`).
 - `POST /users/me/upload-profile-image` — Upload avatar image (multipart form-data). Returns `{ profileImageUrl }` as an absolute CDN URL.
+- `GET /users/search?q=` — Search users by username (`query` is accepted as an alias of `q`). Optional `limit` (1–50, default 10). Returns `[{ id, username, profileImageUrl, readingLevel, readingXpTotal }]`.
+- `GET /users/rankings?limit=` — Top users by XP. `limit` 1–50, default 5. Returns `[{ rank, id, username, profileImageUrl, readingLevel, readingXpTotal, readingTimeTotalSeconds, role }]`.
+- `GET /users/:username` — Public profile: `{ id, username, role, createdAt, profileImageUrl, readingXpTotal, readingLevel, stats, recentSeries: { manga, books }, continueReading }`. `stats` has the same fields as `GET /users/me/reading-stats`.
 
 ---
 
@@ -71,7 +83,9 @@ All API errors (Fastify validation, route errors, business logic exceptions, and
 - `GET /books` — List all books with metadata and cover CDN URLs.
 - `GET /books/:bookId` — Retrieve single book details.
 - `GET /books/:bookId/file` — Retrieve book EPUB file stream or CDN location.
-- `GET /books/:bookId/progress` — Retrieve user's reading progress for the book:
+- `GET /books/rankings?limit=` — Most-read books. `limit` 1–50, default 5. Returns `[{ rank, readersCount, book }]`.
+- `GET /books/:bookId/readers` — Up to 10 users with the most recent progress on the book. Returns `[{ id, username, profileImageUrl, readingLevel, readingXpTotal, lastReadAt }]`.
+- `GET /books/:bookId/progress` — Retrieve the user's reading progress for the book. Returns `null` when the user has no progress for it:
   ```json
   {
     "userId": "usr_id",
@@ -86,7 +100,7 @@ All API errors (Fastify validation, route errors, business logic exceptions, and
     "updatedAt": "2026-09-12T10:00:00.000Z"
   }
   ```
-- `PUT /books/:bookId/progress` — Save/sync reading progress for the book.
+- `PUT /books/:bookId/progress` — Save/sync reading progress for the book. Returns the saved record. Returns `404 BOOK_NOT_FOUND` if the book does not exist. Completion and `totalPages` rules are in `domain-rules.md`.
 - `POST /books` (Admin) — Create a book record (`title`, `author`, `description`, `tagIds`).
 - `PATCH /books/:bookId` (Admin) — Update book metadata.
 - `POST /books/:bookId/upload-epub` (Admin) — Upload EPUB file (multipart form-data).
@@ -131,6 +145,7 @@ All API errors (Fastify validation, route errors, business logic exceptions, and
 - `GET /users/me/recent-series` — Recently read manga series and books.
 - `GET /manga/:mangaId/progress` — Current reading cursor for manga.
 - `POST /manga/:mangaId/progress` — Update manga reading position (`volumeId`, `page`).
+- `GET /manga/:mangaId/readers` — Up to 10 users with the most recent progress on the manga. Returns `[{ id, username, profileImageUrl, readingLevel, readingXpTotal, lastReadAt }]`.
 - `GET /manga/:mangaId/volumes/:volumeId/complete` — Check volume completion status.
 - `POST /manga/:mangaId/volumes/:volumeId/complete` — Mark volume as completed.
 - `DELETE /manga/:mangaId/volumes/:volumeId/complete` — Reset volume completion to restart reading.
