@@ -14,6 +14,7 @@ import { readingSessionRoutes } from "./modules/reading/reading-session.routes.j
 import { volumeCompletionRoutes } from "./modules/reading/volume-completion.routes.js";
 import { tagsRoutes } from "./modules/tags/tags.routes.js";
 import { usersRoutes } from "./modules/users/users.routes.js";
+import { healthRoutes } from "./shared/http/health.js";
 
 function defaultErrorCodeByStatus(statusCode: number) {
   if (statusCode >= 500) return "INTERNAL_ERROR";
@@ -73,6 +74,7 @@ export async function buildApp() {
   }
 
   await registerPlugins(app);
+  await app.register(healthRoutes);
   
   await app.register(mangaProgressRoutes)
   await app.register(readingSessionRoutes)
