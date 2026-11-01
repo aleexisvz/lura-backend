@@ -49,6 +49,11 @@ const adapter = new PrismaPg(pool);
 // the same PrismaClient instance and therefore the same pool.
 export const prisma = new PrismaClient({ adapter });
 
+// Runs a trivial query. Throws if the database cannot be reached.
+export async function pingDatabase() {
+  await prisma.$queryRaw`SELECT 1`;
+}
+
 // Closes Prisma and the underlying pg pool. Call once, when the process exits.
 export async function disconnectDatabase() {
   await prisma.$disconnect();
