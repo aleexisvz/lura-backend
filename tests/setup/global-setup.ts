@@ -1,22 +1,9 @@
 import "dotenv/config";
+import { resolveTestDatabaseUrl } from "./test-database-url.js";
 import { execSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
-
-function deriveTestDatabaseUrl(rawDatabaseUrl: string): string {
-  const parsed = new URL(rawDatabaseUrl);
-  const dbName = parsed.pathname.replace(/^\//, "");
-
-  if (!dbName) {
-    throw new Error("DATABASE_URL must include a database name");
-  }
-
-  const testDbName = dbName.endsWith("_test") ? dbName : `${dbName}_test`;
-  parsed.pathname = `/${testDbName}`;
-
-  return parsed.toString();
-}
 
 function quoteIdentifier(identifier: string): string {
   return `"${identifier.replaceAll('"', '""')}"`;
@@ -49,17 +36,17 @@ async function ensureTestDatabase(testDatabaseUrl: string) {
 }
 
 export default async function globalSetup() {
-  const rawDatabaseUrl = process.env["DATABASE_URL"];
-  if (!rawDatabaseUrl) {
-    throw new Error("DATABASE_URL is required to run tests");
-  }
-
-  const testDatabaseUrl =
-    process.env["DATABASE_URL_TEST"] ?? deriveTestDatabaseUrl(rawDatabaseUrl);
+  const testDatabaseUrl = resolveTestDatabaseUrl();
 
   process.env["DATABASE_URL_TEST"] = testDatabaseUrl;
 
-  await ensureTestDatabase(testDatabaseUrl);
+  try {
+    await ensureTestDatabase(testDatabaseUrl);
+  } catch (error) {
+    // Do not print the URL: it contains credentials.
+    const host = new URL(testDatabaseUrl).host;
+    throw new Error(`Cannot connect to the test database at ${host}. Start it with: docker compose up -d`, { cause: error });
+  }
 
   const rootDir = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
