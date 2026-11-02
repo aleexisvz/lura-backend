@@ -33,3 +33,12 @@
 - React 18 + Vite + TypeScript + TanStack Query.
 - Manga reader with 3-page forward and 1-page backward prefetching, hotkeys, and AFK timer.
 - Book reader with `epub.js`, dual-page spread layout, theme switcher, TOC drawer, bookmarks, and notes.
+
+### 7. Operations & Tooling
+- Health endpoints: `/health` (liveness) and `/health/ready` (readiness, checks the database).
+- Graceful shutdown on `SIGTERM` and `SIGINT`: stops cron jobs, drains HTTP requests, closes database connections.
+- Bounded in-memory EPUB cache (200 MB, least-recently-used eviction).
+- Typecheck (`tsc --noEmit`) runs in CI before the tests.
+- pnpm is the only package manager, pinned through `packageManager`.
+- Local test database through `docker compose`; tests no longer use Neon by default.
+- Book progress is stored in PostgreSQL (`BookProgress`); the old JSON store was removed.
