@@ -35,6 +35,12 @@ export class BookRepository {
     });
   }
 
+  findBooksByIds(ids: string[]) {
+    return prisma.book.findMany({
+      where: { id: { in: ids } },
+    });
+  }
+
   createBook(data: CreateBookDTO) {
     return prisma.book.create({
       data: {
