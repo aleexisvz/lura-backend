@@ -5,8 +5,33 @@ import { buildReadingLevelSnapshot, calculateSessionXp, getXpMultiplierInfo } fr
 import { AppError } from "../../shared/errors/AppError.js";
 import { CloudStorageService } from "../../infrastructure/storage/CloudStorageService.js";
 import { BookProgressService } from "../book/book-progress.service.js";
+import { ReadingReadersRepository, type ReaderEntry } from "./reading-readers.repository.js";
 
 const DEFAULT_AUTO_CLOSED_SESSION_CAP_SECONDS = 30 * 60;
+
+/**
+ * Combines session readers and progress readers into one list: each user once,
+ * at their most recent read, most recent first. Session entries come first, so a
+ * progress entry only replaces a session entry when it is newer.
+ */
+export function mergeRecentReaders(
+    sessionReaders: ReaderEntry[],
+    progressReaders: ReaderEntry[],
+    limit: number
+): ReaderEntry[] {
+    const merged = new Map<string, ReaderEntry>();
+
+    for (const entry of [...sessionReaders, ...progressReaders]) {
+        const existing = merged.get(entry.userId);
+        if (!existing || entry.lastReadAt.getTime() > existing.lastReadAt.getTime()) {
+            merged.set(entry.userId, entry);
+        }
+    }
+
+    return Array.from(merged.values())
+        .sort((a, b) => b.lastReadAt.getTime() - a.lastReadAt.getTime())
+        .slice(0, limit);
+}
 
 function resolveAutoClosedSessionCapSeconds() {
     const raw = process.env["READING_SESSION_AUTOCLOSE_CAP_SECONDS"];
@@ -23,7 +48,8 @@ export class ReadingSessionService {
         private progressRepo: MangaProgressRepository = new MangaProgressRepository(),
         private completionRepo: VolumeCompletionRepository = new VolumeCompletionRepository(),
         private storage: CloudStorageService = new CloudStorageService(),
-        private bookProgress: BookProgressService = new BookProgressService()
+        private bookProgress: BookProgressService = new BookProgressService(),
+        private readersRepo: ReadingReadersRepository = new ReadingReadersRepository()
     ) { }
 
     async startSession(
@@ -197,7 +223,13 @@ export class ReadingSessionService {
     }
 
     async getRecentReaders(contentType: "MANGA" | "BOOK", contentId: string, limit = 10) {
-        const readers = await this.repo.findRecentReaders(contentType, contentId, limit);
+        const [sessionReaders, progressReaders] = await Promise.all([
+            this.readersRepo.findSessionReaders(contentType, contentId),
+            contentType === "MANGA"
+                ? this.readersRepo.findMangaProgressReaders(contentId)
+                : this.readersRepo.findBookProgressReaders(contentId),
+        ]);
+        const readers = mergeRecentReaders(sessionReaders, progressReaders, limit);
         return readers.map(({ user, lastReadAt }) => {
             const levelSnapshot = buildReadingLevelSnapshot(user.readingXpTotal);
             return {
