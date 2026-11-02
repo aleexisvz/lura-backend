@@ -29,14 +29,14 @@ export class BookProgressController {
 
   getProgress = async (req: FastifyRequest, reply: FastifyReply) => {
     const { bookId } = BookIdParamsSchema.parse(req.params);
-    const userId = (req.user as any).sub;
+    const userId = req.user.sub;
     const progress = await this.service.getProgress(userId, bookId);
     return reply.send(progress);
   };
 
   saveProgress = async (req: FastifyRequest, reply: FastifyReply) => {
     const { bookId } = BookIdParamsSchema.parse(req.params);
-    const userId = (req.user as any).sub;
+    const userId = req.user.sub;
     const body = SaveBookProgressSchema.parse(req.body ?? {});
     const record = await this.service.saveProgress(userId, bookId, {
       ...body,

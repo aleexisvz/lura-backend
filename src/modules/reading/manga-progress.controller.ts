@@ -8,7 +8,7 @@ export class MangaProgressController {
     getProgress = async (req: FastifyRequest, reply: FastifyReply) => {
 
         const { mangaId } = req.params as any
-        const userId = (req.user as any).sub
+        const userId = req.user.sub
 
         const result = await this.service.getProgress(userId, mangaId)
 
@@ -18,7 +18,7 @@ export class MangaProgressController {
     updateProgress = async (req: FastifyRequest, reply: FastifyReply) => {
 
         const { mangaId } = req.params as any
-        const userId = (req.user as any).sub
+        const userId = req.user.sub
 
         const { volumeId, page } = req.body as any
 
@@ -34,7 +34,7 @@ export class MangaProgressController {
 
     continueReading = async (req: FastifyRequest, reply: FastifyReply) => {
 
-        const userId = (req.user as any).sub
+        const userId = req.user.sub
 
         const result = await this.service.getContinueReading(userId)
 
