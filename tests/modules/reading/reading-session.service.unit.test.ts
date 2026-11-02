@@ -11,7 +11,6 @@ describe("ReadingSessionService (unit)", () => {
     getTotalReadingTimeByUser: vi.fn(),
     getTotalReadingTimeByUserAndType: vi.fn(),
     countCompletedByUser: vi.fn(),
-    countDistinctCompletedBooksByUser: vi.fn(),
     findRecentMangaSeriesByUser: vi.fn(),
     findRecentBookSeriesByUser: vi.fn(),
     getUserReadingXpTotal: vi.fn(),
@@ -19,6 +18,11 @@ describe("ReadingSessionService (unit)", () => {
 
   const progressRepo = {
     sumPagesReadByUser: vi.fn(),
+  };
+
+  const bookProgress = {
+    sumPagesForUser: vi.fn(),
+    countCompletedForUser: vi.fn(),
   };
 
   const completionRepo = {
@@ -39,7 +43,8 @@ describe("ReadingSessionService (unit)", () => {
       repo as any,
       progressRepo as any,
       completionRepo as any,
-      storage as any
+      storage as any,
+      bookProgress as any
     );
     repo.countCompletedByUser.mockResolvedValue(0);
     progressRepo.sumPagesReadByUser.mockResolvedValue({
@@ -47,7 +52,8 @@ describe("ReadingSessionService (unit)", () => {
     });
     completionRepo.totalCompletedByUser.mockResolvedValue(0);
     completionRepo.countCompletedMangasByUser.mockResolvedValue(0);
-    repo.countDistinctCompletedBooksByUser.mockResolvedValue(0);
+    bookProgress.sumPagesForUser.mockResolvedValue(0);
+    bookProgress.countCompletedForUser.mockResolvedValue(0);
     repo.findRecentMangaSeriesByUser.mockResolvedValue([]);
     repo.findRecentBookSeriesByUser.mockResolvedValue([]);
     repo.getUserReadingXpTotal.mockResolvedValue(0);
@@ -230,7 +236,7 @@ describe("ReadingSessionService (unit)", () => {
     });
     completionRepo.totalCompletedByUser.mockResolvedValue(7);
     completionRepo.countCompletedMangasByUser.mockResolvedValue(2);
-    repo.countDistinctCompletedBooksByUser.mockResolvedValue(2);
+    bookProgress.countCompletedForUser.mockResolvedValue(2);
     repo.getUserReadingXpTotal.mockResolvedValue(95);
 
     const result = await service.getUserReadingStats("user-1");
@@ -270,7 +276,7 @@ describe("ReadingSessionService (unit)", () => {
     });
     completionRepo.totalCompletedByUser.mockResolvedValue(0);
     completionRepo.countCompletedMangasByUser.mockResolvedValue(0);
-    repo.countDistinctCompletedBooksByUser.mockResolvedValue(0);
+    bookProgress.countCompletedForUser.mockResolvedValue(0);
     repo.getUserReadingXpTotal.mockResolvedValue(0);
 
     const result = await service.getUserReadingStats("user-1");
