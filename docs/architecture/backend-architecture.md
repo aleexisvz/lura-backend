@@ -15,7 +15,7 @@ src/
 │   ├── reading/        # Reading sessions, reading XP gamification, progress tracking, volume completion
 │   ├── tags/           # Tagging taxonomy (genres, themes) scoped by content type
 │   └── users/          # User profile management, avatar uploads, and personal settings
-└── shared/             # Cross-cutting concerns: AppError, auth guards, HTTP helpers, schemas
+└── shared/             # Cross-cutting concerns: AppError, auth guards, HTTP helpers (incl. health routes), graceful shutdown, schemas
 ```
 
 ---
@@ -57,6 +57,17 @@ Module Service (Business logic, transactions, rules)
 
 ---
 
+## Process Lifecycle
+
+- **Health endpoints**: `/health` (liveness) and `/health/ready` (readiness, checks the database with `SELECT 1`). Both skip authentication and the rate limit. Details in `api-contracts.md`.
+- **Graceful shutdown**: on `SIGTERM` or `SIGINT`, `src/shared/graceful-shutdown.ts` stops the cron jobs, closes the HTTP server (waiting for in-flight requests, at most 10 s), and then closes the database connections. Repeated signals share one shutdown. The exit code is 0 on success and 1 if a step failed.
+
+## Testing
+
+- Integration tests run against a local PostgreSQL 16 (`docker compose up -d`), by default `localhost:5432/lura_test`. They never use the Neon database unless `DATABASE_URL_TEST` is set to another `*_test` database.
+- Tests that call `resetTestDatabase()` refuse to run on a database whose name does not end in `_test`.
+- Vitest timeouts for tests and hooks are 30 s, because queries can be slow on a remote database.
+
 ## Storage Architecture (Cloudflare R2)
 
 All binary assets (manga page images, covers, avatars, and EPUB files) are managed via `CloudStorageService` using `@aws-sdk/client-s3`:
@@ -75,6 +86,11 @@ All binary assets (manga page images, covers, avatars, and EPUB files) are manag
    - Internal storage keys, S3 buckets, and local filesystem paths are strictly withheld from client responses.
 
 ---
+
+## EPUB Cache
+
+- EPUB files are cached in memory per process, bounded to 200 MB in total, with least-recently-used eviction. An upload invalidates the cached file.
+- EPUB downloads still pass through the backend (`GET /books/:bookId/file`). The rule against proxying applies to images; moving EPUB delivery to the CDN is a pending decision.
 
 ## Error Pipeline & Logging
 
