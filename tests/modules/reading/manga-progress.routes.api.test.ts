@@ -215,6 +215,48 @@ describe("MangaProgress routes (api)", () => {
     expect(body[0]).toMatchObject({ mangaId: manga.id });
   });
 
+  it("GET /users/me/continue-reading should list books in progress and hide finished ones", async () => {
+    const inProgress = await prisma.book.create({ data: { title: "Dune" } });
+    const finished = await prisma.book.create({ data: { title: "Foundation" } });
+    await prisma.bookProgress.create({
+      data: {
+        userId: "user-test-id",
+        bookId: inProgress.id,
+        progressPercent: 40,
+        currentPage: 80,
+        totalPages: 200,
+        sectionHref: "chapter-4.xhtml",
+      },
+    });
+    await prisma.bookProgress.create({
+      data: {
+        userId: "user-test-id",
+        bookId: finished.id,
+        progressPercent: 100,
+        completed: true,
+        completedAt: new Date(),
+      },
+    });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/users/me/continue-reading",
+      headers: buildAuthHeader(app, "USER"),
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body).toHaveLength(1);
+    expect(body[0]).toMatchObject({
+      contentType: "BOOK",
+      bookId: inProgress.id,
+      title: "Dune",
+      pageNumber: 80,
+      totalPages: 200,
+      progressPercent: 40,
+    });
+  });
+
   it("GET /users/me/continue-reading should keep multiple in-progress volumes of same manga", async () => {
     const manga = await prisma.manga.create({
       data: { title: "Blue Lock" },
