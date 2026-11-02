@@ -334,4 +334,70 @@ describe("ReadingSession routes (api)", () => {
       readingLevel: expect.any(Number),
     });
   });
+
+  describe("recent readers merge", () => {
+    const T0 = new Date("2026-10-01T10:00:00Z");
+    const T1 = new Date("2026-10-10T10:00:00Z");
+    const T2 = new Date("2026-10-20T10:00:00Z");
+
+    beforeEach(async () => {
+      await prisma.user.create({
+        data: { id: "user-b", email: "b@tests.local", username: "user_b", password: "hashed" },
+      });
+    });
+
+    it("GET /manga/:mangaId/readers keeps each user once, at their most recent read", async () => {
+      const manga = await prisma.manga.create({ data: { title: "Readers merge" } });
+      const volume = await prisma.volume.create({
+        data: { mangaId: manga.id, number: 1, status: "READY", pagesCount: 10 },
+      });
+      // user-test-id: session at T1, then progress at T2 (newer, wins).
+      await prisma.readingSession.create({
+        data: { userId: "user-test-id", contentType: "MANGA", contentId: manga.id, startedAt: T1 },
+      });
+      await prisma.mangaProgress.create({
+        data: { userId: "user-test-id", mangaId: manga.id, volumeId: volume.id, page: 2, updatedAt: T2 },
+      });
+      // user-b: progress only, at T0 (oldest).
+      await prisma.mangaProgress.create({
+        data: { userId: "user-b", mangaId: manga.id, volumeId: volume.id, page: 1, updatedAt: T0 },
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/manga/${manga.id}/readers`,
+        headers: buildAuthHeader(app, "USER"),
+      });
+
+      expect(response.statusCode).toBe(200);
+      const data = response.json();
+      expect(data.map((r: { id: string }) => r.id)).toEqual(["user-test-id", "user-b"]);
+      expect(data[0].lastReadAt).toBe(T2.toISOString());
+      expect(data[1].lastReadAt).toBe(T0.toISOString());
+    });
+
+    it("GET /books/:bookId/readers lists progress readers and session readers, most recent first", async () => {
+      const book = await prisma.book.create({ data: { title: "Readers merge book" } });
+      // user-test-id: progress at T1.
+      await prisma.bookProgress.create({
+        data: { userId: "user-test-id", bookId: book.id, progressPercent: 10, updatedAt: T1 },
+      });
+      // user-b: session at T2 (newer), no progress.
+      await prisma.readingSession.create({
+        data: { userId: "user-b", contentType: "BOOK", contentId: book.id, startedAt: T2 },
+      });
+
+      const response = await app.inject({
+        method: "GET",
+        url: `/books/${book.id}/readers`,
+        headers: buildAuthHeader(app, "USER"),
+      });
+
+      expect(response.statusCode).toBe(200);
+      const data = response.json();
+      expect(data.map((r: { id: string }) => r.id)).toEqual(["user-b", "user-test-id"]);
+      expect(data[0].lastReadAt).toBe(T2.toISOString());
+      expect(data[1].lastReadAt).toBe(T1.toISOString());
+    });
+  });
 });
