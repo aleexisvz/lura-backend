@@ -3,7 +3,7 @@ import { VolumeCompletionRepository } from "./volume-completion.repository.js";
 import { notFound, unprocessableEntity } from "../../shared/errors/error-factory.js";
 import { CloudStorageService } from "../../infrastructure/storage/CloudStorageService.js";
 import { BookProgressService } from "../book/book-progress.service.js";
-import { prisma } from "../../infrastructure/database/prisma.js";
+import { BookRepository } from "../book/book.repository.js";
 
 function formatSectionTitle(href?: string): string {
     if (!href) return "";
@@ -23,7 +23,8 @@ export class MangaProgressService {
         private repo: MangaProgressRepository,
         private completionRepo = new VolumeCompletionRepository(),
         private storage = new CloudStorageService(),
-        private bookProgress = new BookProgressService()
+        private bookProgress = new BookProgressService(),
+        private bookRepo = new BookRepository()
     ) { }
 
     async getProgress(userId: string, mangaId: string) {
@@ -201,9 +202,7 @@ export class MangaProgressService {
 
         if (bookEntries.length > 0) {
             const bookIds = bookEntries.map((b) => b.bookId);
-            const books = await prisma.book.findMany({
-                where: { id: { in: bookIds } },
-            });
+            const books = await this.bookRepo.findBooksByIds(bookIds);
             const bookMap = new Map(books.map((b) => [b.id, b]));
 
             bookItems = bookEntries
