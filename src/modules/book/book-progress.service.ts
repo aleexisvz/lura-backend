@@ -126,6 +126,10 @@ export class BookProgressService {
     return this.repo.sumPagesByUser(userId);
   }
 
+  countCompletedForUser(userId: string) {
+    return this.repo.countCompletedByUser(userId);
+  }
+
   async findInProgressForUser(userId: string, limit: number) {
     const rows = await this.repo.findInProgressByUser(userId, limit);
     return rows.map(toDTO);

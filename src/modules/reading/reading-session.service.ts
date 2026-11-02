@@ -160,7 +160,7 @@ export class ReadingSessionService {
             this.progressRepo.sumPagesReadByUser(userId),
             this.completionRepo.totalCompletedByUser(userId),
             this.completionRepo.countCompletedMangasByUser(userId),
-            this.repo.countDistinctCompletedBooksByUser(userId),
+            this.bookProgress.countCompletedForUser(userId),
             this.repo.getUserReadingXpTotal(userId),
             this.bookProgress.sumPagesForUser(userId),
         ]);
