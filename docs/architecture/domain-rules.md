@@ -43,3 +43,11 @@
 - **Isolation**: Book reading progress is isolated per user and book (`userId:bookId`).
 - **Progress State**: Records CFI locator, spine index, section href, progress percentage (0–100%), current estimated page, and total book pages.
 - **Downgrade Protection**: The stored `totalPages` of an entire book cannot be overwritten or downgraded by transient chapter page counts emitted during EPUB section loads.
+- **Completion on save**: A book is completed when any of these holds:
+  - it was explicitly marked as completed;
+  - its progress reaches 100%;
+  - it is on its last page (`currentPage >= totalPages`, with `totalPages > 1`) and progress is at least 95%.
+- **Completion is sticky**: once a book is completed, reopening it (for example at page 1) keeps it completed and keeps the original `completedAt`. `completedAt` is cleared only if the book was never completed.
+- **Completed books in statistics**: the "books completed" count uses the same rule as the save path.
+- **Continue reading**: the in-progress list hides a book when it is completed under the same rules, except that the last-page check does not require 95% progress. This differs from the statistics rule above and is an open decision.
+- **Missing progress**: reading a book with no saved progress returns `null`, never another user's progress.
