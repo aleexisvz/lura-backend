@@ -1,7 +1,4 @@
 import { prisma } from "../../infrastructure/database/prisma.js";
-import { BookProgressRepository } from "../book/book-progress.repository.js";
-
-const bookProgressRepo = new BookProgressRepository();
 
 export type RecentSeriesRawItem = {
     contentId: string;
@@ -148,10 +145,6 @@ export class ReadingSessionRepository {
             select: { readingSessionsCount: true },
         });
         return user?.readingSessionsCount ?? 0;
-    }
-
-    async countDistinctCompletedBooksByUser(userId: string) {
-        return bookProgressRepo.countCompletedByUser(userId);
     }
 
     async findRecentMangaSeriesByUser(userId: string, limit: number): Promise<RecentSeriesRawItem[]> {
