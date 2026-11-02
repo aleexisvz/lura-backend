@@ -25,20 +25,20 @@ export class UsersController {
   constructor(private readonly service: UsersService) {}
 
   getMe = async (req: FastifyRequest, reply: FastifyReply) => {
-    const userId = (req.user as { sub: string }).sub;
+    const userId = req.user.sub;
     const user = await this.service.getMe(userId);
     return reply.send(user);
   };
 
   updateMe = async (req: FastifyRequest, reply: FastifyReply) => {
-    const userId = (req.user as { sub: string }).sub;
+    const userId = req.user.sub;
     const { username } = UpdateUsernameSchema.parse(req.body);
     const updated = await this.service.updateUsername(userId, username);
     return reply.send(updated);
   };
 
   uploadProfileImage = async (req: FastifyRequest, reply: FastifyReply) => {
-    const userId = (req.user as { sub: string }).sub;
+    const userId = req.user.sub;
     const result = await this.service.uploadProfileImage(req, userId);
     return reply.send(result);
   };

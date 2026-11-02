@@ -19,7 +19,7 @@ export class ReadingSessionController {
     constructor(private service: ReadingSessionService) { }
 
     startSession = async (req: FastifyRequest, reply: FastifyReply) => {
-        const userId = (req.user as any).sub;
+        const userId = req.user.sub;
         const body = StartSessionSchema.parse(req.body);
 
         const result = await this.service.startSession(
@@ -32,7 +32,7 @@ export class ReadingSessionController {
     };
 
     endSession = async (req: FastifyRequest, reply: FastifyReply) => {
-        const userId = (req.user as any).sub;
+        const userId = req.user.sub;
         const { sessionId } = EndSessionParamsSchema.parse(req.params);
 
         const result = await this.service.endSession(userId, sessionId);
@@ -41,7 +41,7 @@ export class ReadingSessionController {
     };
 
     getMyStats = async (req: FastifyRequest, reply: FastifyReply) => {
-        const userId = (req.user as any).sub;
+        const userId = req.user.sub;
 
         const result = await this.service.getUserReadingStats(userId);
 
@@ -49,7 +49,7 @@ export class ReadingSessionController {
     };
 
     getRecentSeries = async (req: FastifyRequest, reply: FastifyReply) => {
-        const userId = (req.user as any).sub;
+        const userId = req.user.sub;
         const { limit } = RecentSeriesQuerySchema.parse(req.query);
 
         const result = await this.service.getRecentSeries(userId, limit ?? 12);

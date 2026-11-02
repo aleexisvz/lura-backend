@@ -12,7 +12,7 @@ export class VolumeCompletionController {
 
     markCompleted = async (req: FastifyRequest, reply: FastifyReply) => {
         const { mangaId, volumeId } = ParamsSchema.parse(req.params);
-        const userId = (req.user as any).sub;
+        const userId = req.user.sub;
 
         const result = await this.service.markCompleted(userId, mangaId, volumeId);
         return reply.status(200).send(result);
@@ -20,7 +20,7 @@ export class VolumeCompletionController {
 
     checkCompleted = async (req: FastifyRequest, reply: FastifyReply) => {
         const { mangaId, volumeId } = ParamsSchema.parse(req.params);
-        const userId = (req.user as any).sub;
+        const userId = req.user.sub;
 
         const result = await this.service.isCompleted(userId, mangaId, volumeId);
         return reply.send(result);
@@ -28,7 +28,7 @@ export class VolumeCompletionController {
 
     resetCompletion = async (req: FastifyRequest, reply: FastifyReply) => {
         const { mangaId, volumeId } = ParamsSchema.parse(req.params);
-        const userId = (req.user as any).sub;
+        const userId = req.user.sub;
 
         await this.service.resetCompletion(userId, mangaId, volumeId);
         return reply.status(200).send({ ok: true });
