@@ -59,6 +59,8 @@ export default async function globalSetup() {
     env: {
       ...process.env,
       DATABASE_URL: testDatabaseUrl,
+      // prisma.config.ts prefers DIRECT_DATABASE_URL, so it must point at the test database too.
+      DIRECT_DATABASE_URL: testDatabaseUrl,
     },
   });
 }
