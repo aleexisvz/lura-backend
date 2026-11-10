@@ -3,12 +3,15 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
+const url = process.env["DIRECT_DATABASE_URL"] ?? process.env["DATABASE_URL"];
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
   },
-  datasource: process.env["DATABASE_URL"]
-    ? { url: process.env["DATABASE_URL"] }
-    : {},
+  // Prisma CLI commands (migrate, db) use the direct connection when DIRECT_DATABASE_URL
+  // is set: Neon's pooler does not keep session advisory locks reliably, and migrations
+  // depend on them. The application keeps using DATABASE_URL.
+  datasource: url ? { url } : {},
 });
