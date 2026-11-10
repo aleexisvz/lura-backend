@@ -55,6 +55,9 @@ PORT=3001
 
 # PostgreSQL Database
 DATABASE_URL=postgresql://usuario:password@localhost:5432/lura
+# Opcional: conexión directa (sin "-pooler" en Neon) para los comandos de Prisma como migrate.
+# Si no se define, Prisma usa DATABASE_URL.
+# DIRECT_DATABASE_URL=postgresql://usuario:password@localhost:5432/lura
 DATABASE_URL_TEST=postgresql://usuario:password@localhost:5432/lura_test
 
 # JWT Authentication
