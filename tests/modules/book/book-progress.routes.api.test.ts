@@ -144,4 +144,46 @@ describe("Book progress routes (api)", () => {
       details: null,
     });
   });
+
+  describe("value normalization", () => {
+    const put = (body: Record<string, unknown>) =>
+      app.inject({
+        method: "PUT",
+        url: `/books/${bookId}/progress`,
+        headers: buildAuthHeader(app, "USER"),
+        payload: { ...payload, ...body },
+      });
+
+    it("rounds a fractional currentPage instead of failing", async () => {
+      const response = await put({ currentPage: 12.7 });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual(expect.objectContaining({ currentPage: 13 }));
+    });
+
+    it("clamps page numbers that do not fit in a database integer", async () => {
+      const response = await put({ currentPage: 1e12, totalPages: 1e12 });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual(
+        expect.objectContaining({ currentPage: 2147483647, totalPages: 2147483647 })
+      );
+    });
+
+    it("never stores a negative page number", async () => {
+      const response = await put({ currentPage: -5 });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual(expect.objectContaining({ currentPage: 0 }));
+    });
+
+    it("truncates overly long text instead of storing it unbounded", async () => {
+      const response = await put({ title: "x".repeat(5000), chapterTitle: "y".repeat(5000) });
+
+      expect(response.statusCode).toBe(200);
+      const body = response.json();
+      expect(body.title).toHaveLength(500);
+      expect(body.chapterTitle).toHaveLength(500);
+    });
+  });
 });
