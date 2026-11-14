@@ -6,21 +6,45 @@ const BookIdParamsSchema = z.object({
   bookId: z.string().trim().min(1),
 });
 
-// Lenient on purpose: malformed fields fall back to defaults instead of rejecting
-// the request, matching how the progress endpoint has always parsed its body.
+// Lenient on purpose: values are normalized instead of rejected, so the request
+// never fails on a bad number or a long string, and the contract stays the same.
+// Malformed fields fall back to undefined (the service then keeps the stored value).
+
+// Largest value a PostgreSQL integer column accepts.
+const MAX_DB_INT = 2147483647;
+
+const toDbInt = (value: number) => Math.min(MAX_DB_INT, Math.max(0, Math.round(value)));
+
 const optionalNumber = z.coerce.number().finite().optional().catch(undefined);
-const optionalText = z.string().optional().catch(undefined);
+const optionalDbInt = z.coerce
+  .number()
+  .finite()
+  .transform(toDbInt)
+  .optional()
+  .catch(undefined);
+
+const optionalText = (maxLength: number) =>
+  z
+    .string()
+    .transform((value) => value.slice(0, maxLength))
+    .optional()
+    .catch(undefined);
 
 const SaveBookProgressSchema = z.object({
-  spineIndex: optionalNumber,
-  sectionHref: optionalText,
-  locator: optionalText,
+  spineIndex: optionalDbInt,
+  sectionHref: optionalText(2000),
+  locator: optionalText(2000),
   progressPercent: optionalNumber,
-  currentPage: optionalNumber,
-  totalPages: optionalNumber,
-  title: optionalText,
-  coverUrl: z.string().nullable().optional().catch(undefined),
-  chapterTitle: optionalText,
+  currentPage: optionalDbInt,
+  totalPages: optionalDbInt,
+  title: optionalText(500),
+  coverUrl: z
+    .string()
+    .transform((value) => value.slice(0, 2000))
+    .nullable()
+    .optional()
+    .catch(undefined),
+  chapterTitle: optionalText(500),
   completed: z.boolean().optional().catch(undefined),
 });
 
