@@ -59,5 +59,14 @@ jobs:
       - name: Typecheck
         run: pnpm run typecheck
 
-      - name: Run test suite
-        run: pnpm test
+      - name: Run test suite with coverage
+        run: pnpm run test:coverage
+
+      # Informational only: no coverage threshold is enforced.
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          if-no-files-found: ignore
