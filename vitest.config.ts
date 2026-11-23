@@ -15,6 +15,8 @@ export default defineConfig({
     restoreMocks: true,
     coverage: {
       provider: "v8",
+      // Measure every source file, including ones no test loads, so gaps show up.
+      include: ["src/**/*.ts"],
       reporter: ["text", "html"],
       reportsDirectory: "coverage",
     },
