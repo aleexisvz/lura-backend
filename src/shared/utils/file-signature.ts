@@ -2,6 +2,13 @@ import { Readable } from "node:stream";
 
 export type ImageKind = "jpeg" | "png" | "webp";
 
+export const IMAGE_EXTENSION: Record<ImageKind, string> = { jpeg: ".jpeg", png: ".png", webp: ".webp" };
+export const IMAGE_CONTENT_TYPE: Record<ImageKind, string> = {
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+};
+
 // Bytes needed to recognise an EPUB: the ZIP local file header and the start of
 // the first entry. 128 leaves room for a long entry name.
 export const EPUB_HEAD_BYTES = 128;
