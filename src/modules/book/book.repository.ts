@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../../infrastructure/database/prisma.js";
 import { keysetAfter, type PageRequest } from "../../shared/http/pagination.js";
 import type { CreateBookDTO, UpdateBookDTO } from "./book.types.js";
@@ -10,18 +11,41 @@ const bookWithTagsInclude = {
   },
 } as const;
 
+export type BookListFilter = { tagIds: string[]; search: string };
+
+// Every condition is an AND term, so the tag, search and cursor filters never overwrite each other.
+function bookListWhere(filter: BookListFilter, page: PageRequest): Prisma.BookWhereInput {
+  const conditions: Prisma.BookWhereInput[] = [];
+  if (filter.tagIds.length > 0) {
+    conditions.push({ bookTags: { some: { tagId: { in: filter.tagIds } } } });
+  }
+  if (filter.search) {
+    conditions.push({
+      OR: [
+        { title: { contains: filter.search, mode: "insensitive" } },
+        { author: { contains: filter.search, mode: "insensitive" } },
+      ],
+    });
+  }
+  if (page?.cursor) {
+    conditions.push(keysetAfter(page.cursor));
+  }
+  return { AND: conditions };
+}
+
 export class BookRepository {
-  findAllBooks(tagIds: string[] = [], page: PageRequest = null) {
+  findAllBooks(filter: BookListFilter, page: PageRequest = null) {
     return prisma.book.findMany({
-      where: {
-        ...(tagIds.length > 0 ? { bookTags: { some: { tagId: { in: tagIds } } } } : {}),
-        ...(page?.cursor ? keysetAfter(page.cursor) : {}),
-      },
+      where: bookListWhere(filter, page),
       include: bookWithTagsInclude,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       // One extra row tells the service whether another page exists.
       ...(page ? { take: page.limit + 1 } : {}),
     });
+  }
+
+  countBooks(filter: BookListFilter) {
+    return prisma.book.count({ where: bookListWhere(filter, null) });
   }
 
   findBookById(id: string) {

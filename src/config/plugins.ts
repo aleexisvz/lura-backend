@@ -11,7 +11,7 @@ export async function registerPlugins(app: FastifyInstance) {
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     // Lets the browser read the pagination cursor header from other origins.
-    exposedHeaders: ["X-Next-Cursor"],
+    exposedHeaders: ["X-Next-Cursor", "X-Total-Count"],
   });
 
   await app.register(multipart, {
