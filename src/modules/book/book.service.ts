@@ -7,6 +7,15 @@ import { BookRepository, type BookListFilter } from "./book.repository.js";
 import type { CreateBookDTO, PublicBookDTO, UpdateBookDTO } from "./book.types.js";
 import { TagsRepository } from "../tags/tags.repository.js";
 import { splitPage, type PageRequest } from "../../shared/http/pagination.js";
+import {
+  EPUB_HEAD_BYTES,
+  IMAGE_CONTENT_TYPE,
+  IMAGE_EXTENSION,
+  IMAGE_HEAD_BYTES,
+  detectImageKind,
+  isEpubHead,
+  peekStream,
+} from "../../shared/utils/file-signature.js";
 
 type CachedEpub = { buffer: Buffer; filename: string };
 
@@ -151,16 +160,15 @@ export class BookService {
     }
 
     const file = await this.getRequiredFile(req);
-    const isEpubMime = file.mimetype === "application/epub+zip";
-    const hasEpubExtension = path.extname(file.filename ?? "").toLowerCase() === ".epub";
-
-    if (!isEpubMime && !hasEpubExtension) {
+    // The content decides, not the name or mimetype the client sent.
+    const { head, stream } = await peekStream(file.file, EPUB_HEAD_BYTES);
+    if (!isEpubHead(head)) {
       throw badRequest("INVALID_PARAMS", "Invalid EPUB file");
     }
 
     const absolutePath = this.storage.resolveBookEpubPath(bookId);
 
-    await this.storage.saveStream(file.file, absolutePath, "application/epub+zip");
+    await this.storage.saveStream(stream, absolutePath, "application/epub+zip");
 
     const relativePath = path.posix.join("books", bookId, "book.epub");
     await this.repo.updateBookEpubPath(bookId, relativePath);
@@ -176,14 +184,20 @@ export class BookService {
     }
 
     const file = await this.getRequiredFile(req);
-    const extension = this.resolveCoverExtension(file.filename, file.mimetype);
+    // Validate before removing the current cover, so a bad upload keeps the old one.
+    const { head, stream } = await peekStream(file.file, IMAGE_HEAD_BYTES);
+    const kind = detectImageKind(head);
+    if (!kind) {
+      throw badRequest("INVALID_PARAMS", "Invalid image file");
+    }
+
+    const extension = IMAGE_EXTENSION[kind];
     const coverDir = this.storage.resolveBookCoverDir(bookId);
     const absolutePath = this.storage.resolveBookCoverPath(bookId, extension);
     const relativePath = path.posix.join("books", bookId, "cover", `cover${extension}`);
-    const contentType = file.mimetype || (extension === ".webp" ? "image/webp" : extension === ".png" ? "image/png" : "image/jpeg");
 
     await this.storage.removeFilesByPrefix(coverDir, "cover.");
-    await this.storage.saveStream(file.file, absolutePath, contentType);
+    await this.storage.saveStream(stream, absolutePath, IMAGE_CONTENT_TYPE[kind]);
     await this.repo.updateBookCoverPath(bookId, relativePath);
 
     return { uploaded: true };
@@ -224,19 +238,6 @@ export class BookService {
     }
 
     return file;
-  }
-
-  private resolveCoverExtension(filename: string | undefined, mimetype: string) {
-    const ext = path.extname(filename ?? "").toLowerCase();
-    if (ext === ".png" || ext === ".jpg" || ext === ".jpeg" || ext === ".webp") {
-      return ext;
-    }
-
-    if (mimetype === "image/png") return ".png";
-    if (mimetype === "image/jpeg") return ".jpeg";
-    if (mimetype === "image/webp") return ".webp";
-
-    throw badRequest("INVALID_PARAMS", "Invalid image file");
   }
 
   private toPublicBook(book: {
