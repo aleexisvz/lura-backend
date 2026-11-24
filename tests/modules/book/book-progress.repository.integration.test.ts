@@ -118,6 +118,23 @@ describe("BookProgress (integration)", () => {
       expect(await repo.countCompletedByUser(userA)).toBe(1);
     });
 
+    it("a book on its last page below 95% stays in progress and is not counted as completed", async () => {
+      await save(userA, bookId, { currentPage: 100, totalPages: 100, progressPercent: 80 });
+
+      const inProgress = await service.findInProgressForUser(userA, 20);
+      expect(inProgress.map((item) => item.bookId)).toEqual([bookId]);
+      expect(await repo.countCompletedByUser(userA)).toBe(0);
+    });
+
+    it("the stored completed flag decides, even when progress is low", async () => {
+      await prisma.bookProgress.create({
+        data: { userId: userA, bookId, progressPercent: 10, completed: true, completedAt: new Date() },
+      });
+
+      expect(await repo.countCompletedByUser(userA)).toBe(1);
+      expect(await service.findInProgressForUser(userA, 20)).toEqual([]);
+    });
+
     it("findReadersForBook() returns users with progress on the book only", async () => {
       await save(userA, bookId, { progressPercent: 10 });
       await save(userB, bookId, { progressPercent: 20 });
