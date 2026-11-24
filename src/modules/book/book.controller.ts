@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { BookService } from "./book.service.js";
+import { NEXT_CURSOR_HEADER, parsePageRequest } from "../../shared/http/pagination.js";
 
 const tagIdsSchema = z.array(z.string().trim().min(1)).max(100);
 
@@ -41,6 +42,13 @@ export class BookController {
           .map((item) => item.trim())
           .filter(Boolean)
       : [];
+
+    const page = parsePageRequest(req.query);
+    if (page) {
+      const { items, nextCursor } = await this.service.getBooksPage(parsedTagIds, page);
+      if (nextCursor) reply.header(NEXT_CURSOR_HEADER, nextCursor);
+      return reply.send(items);
+    }
 
     const books = await this.service.getAllBooks(parsedTagIds);
     return reply.send(books);

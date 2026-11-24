@@ -6,6 +6,7 @@ import { CloudStorageService } from "../../infrastructure/storage/CloudStorageSe
 import { BookRepository } from "./book.repository.js";
 import type { CreateBookDTO, PublicBookDTO, UpdateBookDTO } from "./book.types.js";
 import { TagsRepository } from "../tags/tags.repository.js";
+import { splitPage, type PageRequest } from "../../shared/http/pagination.js";
 
 type CachedEpub = { buffer: Buffer; filename: string };
 
@@ -22,6 +23,12 @@ export class BookService {
   async getAllBooks(tagIds: string[] = []) {
     const books = await this.repo.findAllBooks(tagIds);
     return books.map((book) => this.toPublicBook(book));
+  }
+
+  async getBooksPage(tagIds: string[], page: NonNullable<PageRequest>) {
+    const books = await this.repo.findAllBooks(tagIds, page);
+    const { items, nextCursor } = splitPage(books, page.limit);
+    return { items: items.map((book) => this.toPublicBook(book)), nextCursor };
   }
 
   async getBookById(bookId: string) {

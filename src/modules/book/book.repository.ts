@@ -1,4 +1,5 @@
 import { prisma } from "../../infrastructure/database/prisma.js";
+import { keysetAfter, type PageRequest } from "../../shared/http/pagination.js";
 import type { CreateBookDTO, UpdateBookDTO } from "./book.types.js";
 
 const bookWithTagsInclude = {
@@ -10,21 +11,16 @@ const bookWithTagsInclude = {
 } as const;
 
 export class BookRepository {
-  findAllBooks(tagIds: string[] = []) {
+  findAllBooks(tagIds: string[] = [], page: PageRequest = null) {
     return prisma.book.findMany({
-      ...(tagIds.length > 0
-        ? {
-            where: {
-              bookTags: {
-                some: {
-                  tagId: { in: tagIds },
-                },
-              },
-            },
-          }
-        : {}),
+      where: {
+        ...(tagIds.length > 0 ? { bookTags: { some: { tagId: { in: tagIds } } } } : {}),
+        ...(page?.cursor ? keysetAfter(page.cursor) : {}),
+      },
       include: bookWithTagsInclude,
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      // One extra row tells the service whether another page exists.
+      ...(page ? { take: page.limit + 1 } : {}),
     });
   }
 
