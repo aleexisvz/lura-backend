@@ -10,6 +10,7 @@ import { naturalSortByFilename } from "../../shared/utils/natural-sort.js";
 import { splitPage, type PageRequest } from "../../shared/http/pagination.js";
 import { notFound, conflict, badRequest } from "../../shared/errors/error-factory.js";
 import { getImageContentType } from "../../shared/utils/get-image-content-type.js";
+import { detectImageKind } from "../../shared/utils/file-signature.js";
 import { TagsRepository } from "../tags/tags.repository.js";
 
 type RawManga = {
@@ -271,11 +272,14 @@ export class MangaService {
     }
 
     const file = await this.getRequiredFile(req);
-    this.resolveCoverExtension(file.filename, file.mimetype); // validate input format
+    const original = await file.toBuffer();
+    if (!detectImageKind(original)) {
+      throw badRequest("INVALID_PARAMS", "Invalid image file");
+    }
     const absolutePath = this.storage.resolveMangaCoverPath(mangaId, ".webp");
     const relativePath = path.posix.join("manga", mangaId, "cover", "cover.webp");
 
-    const webpBuffer = await sharp(await file.toBuffer())
+    const webpBuffer = await sharp(original)
       .resize({ width: 600, withoutEnlargement: true })
       .webp({ quality: 75, effort: 6 })
       .toBuffer();
@@ -293,7 +297,10 @@ export class MangaService {
     }
 
     const file = await this.getRequiredFile(req);
-    this.resolveCoverExtension(file.filename, file.mimetype); // validate input format
+    const original = await file.toBuffer();
+    if (!detectImageKind(original)) {
+      throw badRequest("INVALID_PARAMS", "Invalid image file");
+    }
     const absolutePath = this.storage.resolveVolumeCoverPath(mangaId, volumeId, ".webp");
     const relativePath = path.posix.join(
       "manga",
@@ -304,7 +311,7 @@ export class MangaService {
       "cover.webp"
     );
 
-    const webpBuffer = await sharp(await file.toBuffer())
+    const webpBuffer = await sharp(original)
       .resize({ width: 600, withoutEnlargement: true })
       .webp({ quality: 75, effort: 6 })
       .toBuffer();
@@ -377,19 +384,6 @@ export class MangaService {
     }
 
     return file;
-  }
-
-  private resolveCoverExtension(filename: string | undefined, mimetype: string) {
-    const ext = path.extname(filename ?? "").toLowerCase();
-    if (ext === ".png" || ext === ".jpg" || ext === ".jpeg" || ext === ".webp") {
-      return ext;
-    }
-
-    if (mimetype === "image/png") return ".png";
-    if (mimetype === "image/jpeg") return ".jpeg";
-    if (mimetype === "image/webp") return ".webp";
-
-    throw badRequest("INVALID_PARAMS", "Invalid image file");
   }
 
   private toCoverUrl(coverPath: string | null) {
