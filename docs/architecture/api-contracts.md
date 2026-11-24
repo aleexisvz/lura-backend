@@ -53,7 +53,7 @@ No authentication, and excluded from the rate limit. Intended for monitors and h
 
 - `GET /users/me` — Retrieve the authenticated user profile, stats, and role.
 - `PATCH /users/me` — Update user profile details (e.g. `username`).
-- `POST /users/me/upload-profile-image` — Upload avatar image (multipart form-data). Returns `{ profileImageUrl }` as an absolute CDN URL.
+- `POST /users/me/upload-profile-image` — Upload avatar image (multipart form-data). Must be JPEG, PNG or WebP by content; otherwise 400 `INVALID_PARAMS`. Returns `{ profileImageUrl }` as an absolute CDN URL.
 - `GET /users/search?q=` — Search users by username (`query` is accepted as an alias of `q`). Optional `limit` (1–50, default 10). Returns `[{ id, username, profileImageUrl, readingLevel, readingXpTotal }]`.
 - `GET /users/rankings?limit=` — Top users by XP. `limit` 1–50, default 5. Returns `[{ rank, id, username, profileImageUrl, readingLevel, readingXpTotal, readingTimeTotalSeconds, role }]`.
 - `GET /users/:username` — Public profile: `{ id, username, role, createdAt, profileImageUrl, readingXpTotal, readingLevel, stats, recentSeries: { manga, books }, continueReading }`. `stats` has the same fields as `GET /users/me/reading-stats`.
@@ -117,8 +117,8 @@ No authentication, and excluded from the rate limit. Intended for monitors and h
 - `PUT /books/:bookId/progress` — Save/sync reading progress for the book. Returns the saved record. Returns `404 BOOK_NOT_FOUND` if the book does not exist. Completion and `totalPages` rules are in `domain-rules.md`.
 - `POST /books` (Admin) — Create a book record (`title`, `author`, `description`, `tagIds`).
 - `PATCH /books/:bookId` (Admin) — Update book metadata.
-- `POST /books/:bookId/upload-epub` (Admin) — Upload EPUB file (multipart form-data).
-- `POST /books/:bookId/upload-cover` (Admin) — Upload book cover image (multipart form-data).
+- `POST /books/:bookId/upload-epub` (Admin) — Upload EPUB file (multipart form-data). Must be an EPUB by content (ZIP with a `mimetype` entry); otherwise 400 `INVALID_PARAMS`.
+- `POST /books/:bookId/upload-cover` (Admin) — Upload book cover image (multipart form-data). Must be JPEG, PNG or WebP by content; otherwise 400 `INVALID_PARAMS`.
 
 ---
 
