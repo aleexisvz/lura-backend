@@ -2,6 +2,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { MangaService } from "./manga.service.js";
 import { notFound } from "../../shared/errors/error-factory.js";
+import { NEXT_CURSOR_HEADER, parsePageRequest } from "../../shared/http/pagination.js";
 
 const tagIdsSchema = z.array(z.string().trim().min(1)).max(100);
 
@@ -71,6 +72,13 @@ export class MangaController {
           .map((item) => item.trim())
           .filter(Boolean)
       : [];
+
+    const page = parsePageRequest(req.query);
+    if (page) {
+      const { items, nextCursor } = await this.service.getMangasPage(parsedTagIds, page);
+      if (nextCursor) reply.header(NEXT_CURSOR_HEADER, nextCursor);
+      return reply.send(items);
+    }
 
     const mangas = await this.service.getAllMangas(parsedTagIds);
     return reply.send(mangas);
