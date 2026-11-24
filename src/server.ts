@@ -3,6 +3,7 @@ import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
 import { disconnectDatabase } from "./infrastructure/database/prisma.js";
 import { createShutdown } from "./shared/graceful-shutdown.js";
+import { createFatalErrorHandler } from "./shared/process-errors.js";
 
 const SHUTDOWN_TIMEOUT_MS = 10_000;
 
@@ -19,6 +20,10 @@ async function main() {
     exit: (code) => process.exit(code),
     timeoutMs: SHUTDOWN_TIMEOUT_MS,
   });
+
+  const fatal = createFatalErrorHandler({ log: app.log, exit: (code) => process.exit(code) });
+  process.on("uncaughtException", fatal("uncaughtException"));
+  process.on("unhandledRejection", fatal("unhandledRejection"));
 
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
   process.on("SIGINT", () => void shutdown("SIGINT"));
