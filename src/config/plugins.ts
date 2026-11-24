@@ -6,8 +6,14 @@ import type { FastifyInstance } from "fastify";
 import { env } from "./env.js";
 
 export async function registerPlugins(app: FastifyInstance) {
+  const allowedOrigins = env.CORS_ORIGINS.split(",").map((origin) => origin.trim()).filter(Boolean);
+
   await app.register(cors, {
-    origin: true,
+    // Only listed origins get the CORS headers. Requests without an Origin header
+    // (curl, server-to-server) are not browser cross-origin requests and pass through.
+    origin: (origin, callback) => {
+      callback(null, !origin || allowedOrigins.includes(origin));
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     // Lets the browser read the pagination cursor header from other origins.

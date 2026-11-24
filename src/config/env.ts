@@ -22,6 +22,10 @@ const EnvSchema = z.object({
 
   DATABASE_URL: z.string().min(1),
 
+  // Browser origins allowed to call the API, comma separated. Add the frontend's
+  // production URL here when it is deployed.
+  CORS_ORIGINS: z.string().default("http://localhost:5173"),
+
   JWT_SECRET: z.string().min(10),
   // Accepts any value understood by the jsonwebtoken "expiresIn" option.
   // Examples: "15m", "1h", "7d".
