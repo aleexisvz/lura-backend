@@ -3,6 +3,13 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { CloudStorageService } from "../../infrastructure/storage/CloudStorageService.js";
 import { badRequest, conflict, notFound } from "../../shared/errors/error-factory.js";
 import { getImageContentType } from "../../shared/utils/get-image-content-type.js";
+import {
+  IMAGE_CONTENT_TYPE,
+  IMAGE_EXTENSION,
+  IMAGE_HEAD_BYTES,
+  detectImageKind,
+  peekStream,
+} from "../../shared/utils/file-signature.js";
 import { buildReadingLevelSnapshot } from "../reading/reading-xp.js";
 import { MangaProgressRepository } from "../reading/manga-progress.repository.js";
 import { MangaProgressService } from "../reading/manga-progress.service.js";
@@ -60,13 +67,20 @@ export class UsersService {
     }
 
     const file = await this.getRequiredImageFile(req);
-    const extension = this.resolveImageExtension(file.filename, file.mimetype);
+    // Validate before removing the current avatar, so a bad upload keeps the old one.
+    const { head, stream } = await peekStream(file.file, IMAGE_HEAD_BYTES);
+    const kind = detectImageKind(head);
+    if (!kind) {
+      throw badRequest("INVALID_PARAMS", "Invalid profile image file");
+    }
+
+    const extension = IMAGE_EXTENSION[kind];
     const imageDir = this.storage.resolveUserProfileImageDir(userId);
     const absolutePath = this.storage.resolveUserProfileImagePath(userId, extension);
     const relativePath = path.posix.join("users", userId, "profile", `avatar${extension}`);
 
     await this.storage.removeFilesByPrefix(imageDir, "avatar.");
-    await this.storage.saveStream(file.file, absolutePath);
+    await this.storage.saveStream(stream, absolutePath, IMAGE_CONTENT_TYPE[kind]);
     const updated = await this.repo.updateProfileImagePath(userId, relativePath);
 
     return {
@@ -98,19 +112,6 @@ export class UsersService {
     }
 
     return file;
-  }
-
-  private resolveImageExtension(filename: string | undefined, mimetype: string) {
-    const extension = path.extname(filename ?? "").toLowerCase();
-    if (extension === ".png" || extension === ".jpg" || extension === ".jpeg" || extension === ".webp") {
-      return extension;
-    }
-
-    if (mimetype === "image/png") return ".png";
-    if (mimetype === "image/jpeg") return ".jpeg";
-    if (mimetype === "image/webp") return ".webp";
-
-    throw badRequest("INVALID_PARAMS", "Invalid profile image file");
   }
 
   async getPublicProfile(rawUsername: string): Promise<PublicUserProfileDTO> {
