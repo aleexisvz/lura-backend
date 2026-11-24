@@ -49,5 +49,5 @@
   - it is on its last page (`currentPage >= totalPages`, with `totalPages > 1`) and progress is at least 95%.
 - **Completion is sticky**: once a book is completed, reopening it (for example at page 1) keeps it completed and keeps the original `completedAt`. `completedAt` is cleared only if the book was never completed.
 - **Completed books in statistics**: the "books completed" count uses the same rule as the save path.
-- **Continue reading**: the in-progress list hides a book when it is completed under the same rules, except that the last-page check does not require 95% progress. This differs from the statistics rule above and is an open decision.
+- **Continue reading**: the in-progress list shows the books whose stored `completed` flag is false, so it uses the same rule as the statistics. A book on its last page below 95% stays in the list and is not counted as completed.
 - **Missing progress**: reading a book with no saved progress returns `null`, never another user's progress.
