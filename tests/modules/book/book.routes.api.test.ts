@@ -385,4 +385,54 @@ describe("Book routes (api)", () => {
       }),
     });
   });
+
+  describe("GET /books pagination", () => {
+    const seed = async () => {
+      const oldest = await prisma.book.create({ data: { id: "book-old", title: "Oldest", createdAt: new Date("2026-01-01T00:00:00Z") } });
+      const tieA = await prisma.book.create({ data: { id: "book-tie-a", title: "Tie A", createdAt: new Date("2026-02-01T00:00:00Z") } });
+      const tieB = await prisma.book.create({ data: { id: "book-tie-b", title: "Tie B", createdAt: new Date("2026-02-01T00:00:00Z") } });
+      return { oldest, tieA, tieB };
+    };
+
+    it("returns every book with no pagination header when limit and cursor are not sent", async () => {
+      await seed();
+
+      const response = await app.inject({ method: "GET", url: "/books", headers: buildAuthHeader(app, "USER") });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toHaveLength(3);
+      expect(response.headers["x-next-cursor"]).toBeUndefined();
+    });
+
+    it("pages through all books with limit and the next cursor, without duplicates", async () => {
+      await seed();
+      const headers = buildAuthHeader(app, "USER");
+
+      const first = await app.inject({ method: "GET", url: "/books?limit=2", headers });
+      expect(first.statusCode).toBe(200);
+      const firstIds = first.json().map((b: { id: string }) => b.id);
+      const cursor = first.headers["x-next-cursor"];
+      expect(firstIds).toHaveLength(2);
+      expect(typeof cursor).toBe("string");
+
+      const second = await app.inject({ method: "GET", url: `/books?limit=2&cursor=${cursor}`, headers });
+      expect(second.statusCode).toBe(200);
+      const secondIds = second.json().map((b: { id: string }) => b.id);
+
+      expect(second.headers["x-next-cursor"]).toBeUndefined();
+      expect([...firstIds, ...secondIds].sort()).toEqual(["book-old", "book-tie-a", "book-tie-b"]);
+    });
+
+    it("rejects a limit above 100 and a malformed cursor with 400", async () => {
+      const headers = buildAuthHeader(app, "USER");
+
+      const tooLarge = await app.inject({ method: "GET", url: "/books?limit=101", headers });
+      expect(tooLarge.statusCode).toBe(400);
+
+      const badCursor = await app.inject({ method: "GET", url: "/books?cursor=nope", headers });
+      expect(badCursor.statusCode).toBe(400);
+      expect(badCursor.json()).toMatchObject({ code: "INVALID_PARAMS" });
+    });
+  });
 });
+
