@@ -363,4 +363,53 @@ describe("Manga routes (api)", () => {
       })
     );
   });
+
+  describe("GET /manga pagination", () => {
+    const seed = async () => {
+      await prisma.manga.create({ data: { id: "manga-old", title: "Oldest", createdAt: new Date("2026-01-01T00:00:00Z") } });
+      await prisma.manga.create({ data: { id: "manga-tie-a", title: "Tie A", createdAt: new Date("2026-02-01T00:00:00Z") } });
+      await prisma.manga.create({ data: { id: "manga-tie-b", title: "Tie B", createdAt: new Date("2026-02-01T00:00:00Z") } });
+    };
+
+    it("returns every manga with no pagination header when limit and cursor are not sent", async () => {
+      await seed();
+
+      const response = await app.inject({ method: "GET", url: "/manga", headers: buildAuthHeader(app, "USER") });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toHaveLength(3);
+      expect(response.headers["x-next-cursor"]).toBeUndefined();
+    });
+
+    it("pages through all mangas with limit and the next cursor, without duplicates", async () => {
+      await seed();
+      const headers = buildAuthHeader(app, "USER");
+
+      const first = await app.inject({ method: "GET", url: "/manga?limit=2", headers });
+      expect(first.statusCode).toBe(200);
+      const firstIds = first.json().map((m: { id: string }) => m.id);
+      const cursor = first.headers["x-next-cursor"];
+      expect(firstIds).toHaveLength(2);
+      expect(typeof cursor).toBe("string");
+
+      const second = await app.inject({ method: "GET", url: `/manga?limit=2&cursor=${cursor}`, headers });
+      expect(second.statusCode).toBe(200);
+      const secondIds = second.json().map((m: { id: string }) => m.id);
+
+      expect(second.headers["x-next-cursor"]).toBeUndefined();
+      expect([...firstIds, ...secondIds].sort()).toEqual(["manga-old", "manga-tie-a", "manga-tie-b"]);
+    });
+
+    it("rejects a limit above 100 and a malformed cursor with 400", async () => {
+      const headers = buildAuthHeader(app, "USER");
+
+      const tooLarge = await app.inject({ method: "GET", url: "/manga?limit=101", headers });
+      expect(tooLarge.statusCode).toBe(400);
+
+      const badCursor = await app.inject({ method: "GET", url: "/manga?cursor=nope", headers });
+      expect(badCursor.statusCode).toBe(400);
+      expect(badCursor.json()).toMatchObject({ code: "INVALID_PARAMS" });
+    });
+  });
 });
+
