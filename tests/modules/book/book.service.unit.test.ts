@@ -3,6 +3,17 @@ import { Readable } from "node:stream";
 import path from "node:path";
 import { BookService, EPUB_CACHE_MAX_BYTES } from "../../../src/modules/book/book.service.js";
 
+// A minimal EPUB start: a ZIP local file header for an uncompressed "mimetype" entry.
+function validEpubBytes() {
+  const name = Buffer.from("mimetype", "ascii");
+  const content = Buffer.from("application/epub+zip", "ascii");
+  const header = Buffer.alloc(30);
+  header.writeUInt32LE(0x04034b50, 0);
+  header.writeUInt16LE(20, 4);
+  header.writeUInt16LE(name.length, 26);
+  return Buffer.concat([header, name, content]);
+}
+
 describe("BookService (unit)", () => {
   const repo = {
     findAllBooks: vi.fn(),
@@ -153,24 +164,44 @@ describe("BookService (unit)", () => {
     const absolutePath = path.join("C:", "repo", "storage", "books", "b-1", "book.epub");
     storage.resolveBookEpubPath.mockReturnValue(absolutePath);
 
-    const fileStream = Readable.from(["epub-bytes"]);
+    const epub = validEpubBytes();
     const req = {
       file: vi.fn().mockResolvedValue({
         filename: "dune.epub",
         mimetype: "application/epub+zip",
-        file: fileStream,
+        file: Readable.from([epub]),
       }),
     };
 
     const result = await service.uploadEpub(req as any, "b-1");
 
-    expect(storage.saveStream).toHaveBeenCalledWith(
-      fileStream,
-      absolutePath,
-      "application/epub+zip"
-    );
+    expect(storage.saveStream).toHaveBeenCalledTimes(1);
+    const [savedStream, savedPath, savedType] = storage.saveStream.mock.calls[0]!;
+    expect(savedPath).toBe(absolutePath);
+    expect(savedType).toBe("application/epub+zip");
+    const saved: Buffer[] = [];
+    for await (const chunk of savedStream) saved.push(Buffer.from(chunk));
+    expect(Buffer.concat(saved).equals(epub)).toBe(true);
     expect(repo.updateBookEpubPath).toHaveBeenCalledWith("b-1", "books/b-1/book.epub");
     expect(result).toEqual({ uploaded: true });
+  });
+
+  it("uploadEpub() rejects content that is not an EPUB, even with an .epub name", async () => {
+    repo.findBookById.mockResolvedValue({ id: "b-1", title: "Dune", bookTags: [] });
+    const req = {
+      file: vi.fn().mockResolvedValue({
+        filename: "fake.epub",
+        mimetype: "application/epub+zip",
+        file: Readable.from(["%PDF-1.7 not an epub"]),
+      }),
+    };
+
+    await expect(service.uploadEpub(req as any, "b-1")).rejects.toMatchObject({
+      code: "INVALID_PARAMS",
+      statusCode: 400,
+    });
+    expect(storage.saveStream).not.toHaveBeenCalled();
+    expect(repo.updateBookEpubPath).not.toHaveBeenCalled();
   });
 
   it("getBookFile() should return buffer and cache it", async () => {
@@ -216,7 +247,7 @@ describe("BookService (unit)", () => {
         file: vi.fn().mockResolvedValue({
           filename: "book.epub",
           mimetype: "application/epub+zip",
-          file: Readable.from(["bytes"]),
+          file: Readable.from([validEpubBytes()]),
         }),
       };
       return service.uploadEpub(req as any, bookId);
