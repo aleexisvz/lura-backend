@@ -15,6 +15,7 @@ import { volumeCompletionRoutes } from "./modules/reading/volume-completion.rout
 import { tagsRoutes } from "./modules/tags/tags.routes.js";
 import { usersRoutes } from "./modules/users/users.routes.js";
 import { healthRoutes } from "./shared/http/health.js";
+import { errorTracker } from "./shared/observability/error-tracker.instance.js";
 
 function defaultErrorCodeByStatus(statusCode: number) {
   if (statusCode >= 500) return "INTERNAL_ERROR";
@@ -168,6 +169,7 @@ export async function buildApp() {
     }
 
     req.log.error(error);
+    errorTracker.captureException(error, { request_id: req.id });
     return reply.status(500).send({
       code: "INTERNAL_ERROR",
       message: "Internal server error",
