@@ -1,20 +1,8 @@
-import { Prisma, type BookProgress } from "@prisma/client";
+import type { BookProgress } from "@prisma/client";
 import { prisma } from "../../infrastructure/database/prisma.js";
 
-// Same completion rule as the save path in book-progress.service.ts.
-const completedSql = Prisma.sql`(
-  "completed" = true
-  OR "progressPercent" >= 100
-  OR ("currentPage" >= "totalPages" AND "totalPages" > 1 AND "progressPercent" >= 95)
-)`;
-
-// Rule used to hide finished books from the continue-reading list. It does not
-// require 95% progress, and it stays as it was for the manga progress feed.
-const finishedForListSql = Prisma.sql`(
-  "completed" = true
-  OR "progressPercent" >= 100
-  OR ("currentPage" >= "totalPages" AND "totalPages" > 1)
-)`;
+// The stored "completed" column is the only completion rule. BookProgressService
+// sets it when progress is saved, so reads never recalculate it.
 
 export type BookProgressWriteData = Omit<BookProgress, "id" | "userId" | "bookId" | "createdAt">;
 
@@ -49,7 +37,7 @@ export class BookProgressRepository {
     return prisma.$queryRaw<BookProgress[]>`
       SELECT * FROM "BookProgress"
       WHERE "userId" = ${userId}
-        AND NOT COALESCE(${finishedForListSql}, false)
+        AND "completed" = false
       ORDER BY "updatedAt" DESC
       LIMIT ${limit}
     `;
@@ -59,7 +47,7 @@ export class BookProgressRepository {
     return prisma.$queryRaw<{ count: number }[]>`
       SELECT COUNT(*)::int AS "count" FROM "BookProgress"
       WHERE "userId" = ${userId}
-        AND ${completedSql}
+        AND "completed" = true
     `.then((rows) => rows[0]?.count ?? 0);
   }
 
