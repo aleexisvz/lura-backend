@@ -411,5 +411,41 @@ describe("Manga routes (api)", () => {
       expect(badCursor.json()).toMatchObject({ code: "INVALID_PARAMS" });
     });
   });
+
+  describe("GET /manga search and total", () => {
+    const seed = async () => {
+      await prisma.manga.create({ data: { id: "manga-one", title: "One Piece", author: "Eiichiro Oda" } });
+      await prisma.manga.create({ data: { id: "manga-kanji", title: "Hunter", titleKanji: "ハンター" } });
+      await prisma.manga.create({ data: { id: "manga-naruto", title: "Naruto", author: "Masashi Kishimoto" } });
+    };
+
+    it("searches title, kanji title and author without caring about case", async () => {
+      await seed();
+      const headers = buildAuthHeader(app, "USER");
+
+      const byTitle = await app.inject({ method: "GET", url: "/manga?q=one%20piece", headers });
+      expect(byTitle.json().map((m: { id: string }) => m.id)).toEqual(["manga-one"]);
+
+      const byAuthor = await app.inject({ method: "GET", url: "/manga?q=KISHIMOTO", headers });
+      expect(byAuthor.json().map((m: { id: string }) => m.id)).toEqual(["manga-naruto"]);
+
+      const byKanji = await app.inject({ method: "GET", url: "/manga?q=%E3%83%8F%E3%83%B3", headers });
+      expect(byKanji.json().map((m: { id: string }) => m.id)).toEqual(["manga-kanji"]);
+    });
+
+    it("sends the total of matching mangas with every paged response", async () => {
+      await seed();
+      const headers = buildAuthHeader(app, "USER");
+
+      const all = await app.inject({ method: "GET", url: "/manga?limit=1", headers });
+      expect(all.headers["x-total-count"]).toBe("3");
+      expect(all.json()).toHaveLength(1);
+
+      const matching = await app.inject({ method: "GET", url: "/manga?limit=10&q=naruto", headers });
+      expect(matching.headers["x-total-count"]).toBe("1");
+      expect(matching.json()).toHaveLength(1);
+    });
+  });
 });
+
 
