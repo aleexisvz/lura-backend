@@ -58,3 +58,13 @@ export function splitPage<T extends PageCursor>(rows: T[], limit: number) {
   const nextCursor = hasMore && items.length > 0 ? encodeCursor(items[items.length - 1]!) : null;
   return { items, nextCursor };
 }
+
+// Rows strictly after the cursor in (createdAt desc, id desc) order.
+export function keysetAfter(cursor: PageCursor) {
+  return {
+    OR: [
+      { createdAt: { lt: cursor.createdAt } },
+      { createdAt: cursor.createdAt, id: { lt: cursor.id } },
+    ],
+  };
+}
