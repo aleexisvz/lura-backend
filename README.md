@@ -59,6 +59,8 @@ DATABASE_URL=postgresql://usuario:password@localhost:5432/lura
 # Si no se define, Prisma usa DATABASE_URL.
 # DIRECT_DATABASE_URL=postgresql://usuario:password@localhost:5432/lura
 DATABASE_URL_TEST=postgresql://usuario:password@localhost:5432/lura_test
+# Orígenes del navegador permitidos para llamar a la API (separados por coma).
+CORS_ORIGINS=http://localhost:5173
 
 # JWT Authentication
 JWT_SECRET=tu_secreto_super_seguro_con_mas_de_10_caracteres
