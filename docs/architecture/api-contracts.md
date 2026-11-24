@@ -18,6 +18,18 @@ All API errors (Fastify validation, route errors, business logic exceptions, and
 
 ---
 
+## Pagination
+
+Catalog lists (`GET /manga`, `GET /books`) can be paged:
+
+- `limit`: integer from 1 to 100, default 50. Sending `limit` or `cursor` turns paging on.
+- `cursor`: opaque value taken from the `X-Next-Cursor` response header of the previous page. Send it back unchanged.
+- `X-Next-Cursor`: present only when another page exists. Lists are ordered newest first.
+- Without `limit` and `cursor`, the response is the full list, as before.
+- An out-of-range `limit` or a malformed `cursor` returns 400 with `INVALID_PARAMS`.
+
+---
+
 ## Health (`/health`)
 
 No authentication, and excluded from the rate limit. Intended for monitors and hosting platforms.
@@ -48,7 +60,7 @@ No authentication, and excluded from the rate limit. Intended for monitors and h
 
 ## Manga Catalog (`/manga`)
 
-- `GET /manga` — List all mangas with optional pagination and genre filtering.
+- `GET /manga` — List mangas. Optional `tagIds` filter, and optional paging (see Pagination).
 - `GET /manga/featured` — Retrieve featured mangas.
 - `GET /manga/recent-updates` — Retrieve recently updated manga series.
 - `GET /manga/rankings` — Retrieve popular/top-rated manga series.
@@ -80,7 +92,7 @@ No authentication, and excluded from the rate limit. Intended for monitors and h
 
 ## Books Catalog (`/books`)
 
-- `GET /books` — List all books with metadata and cover CDN URLs.
+- `GET /books` — List books with metadata and cover CDN URLs. Optional `tagIds` filter, and optional paging (see Pagination).
 - `GET /books/:bookId` — Retrieve single book details.
 - `GET /books/:bookId/file` — Retrieve book EPUB file stream or CDN location.
 - `GET /books/rankings?limit=` — Most-read books. `limit` 1–50, default 5. Returns `[{ rank, readersCount, book }]`.
