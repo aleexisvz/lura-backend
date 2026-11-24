@@ -2,7 +2,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { MangaService } from "./manga.service.js";
 import { notFound } from "../../shared/errors/error-factory.js";
-import { NEXT_CURSOR_HEADER, parsePageRequest } from "../../shared/http/pagination.js";
+import { NEXT_CURSOR_HEADER, TOTAL_COUNT_HEADER, parsePageRequest } from "../../shared/http/pagination.js";
 
 const tagIdsSchema = z.array(z.string().trim().min(1)).max(100);
 
@@ -22,6 +22,7 @@ const PageImageParamsSchema = z.object({
 });
 
 const MangaListQuerySchema = z.object({
+  q: z.string().trim().max(100).optional(),
   tagIds: z.string().optional(),
 });
 
@@ -65,22 +66,26 @@ export class MangaController {
   constructor(private service: MangaService) {}
 
   getAllMangas = async (req: FastifyRequest, reply: FastifyReply) => {
-    const { tagIds } = MangaListQuerySchema.parse(req.query);
-    const parsedTagIds = tagIds
-      ? tagIds
-          .split(",")
-          .map((item) => item.trim())
-          .filter(Boolean)
-      : [];
+    const { tagIds, q } = MangaListQuerySchema.parse(req.query);
+    const filter = {
+      tagIds: tagIds
+        ? tagIds
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean)
+        : [],
+      search: q ?? "",
+    };
 
     const page = parsePageRequest(req.query);
     if (page) {
-      const { items, nextCursor } = await this.service.getMangasPage(parsedTagIds, page);
+      const { items, nextCursor, total } = await this.service.getMangasPage(filter, page);
       if (nextCursor) reply.header(NEXT_CURSOR_HEADER, nextCursor);
+      reply.header(TOTAL_COUNT_HEADER, String(total));
       return reply.send(items);
     }
 
-    const mangas = await this.service.getAllMangas(parsedTagIds);
+    const mangas = await this.service.getAllMangas(filter);
     return reply.send(mangas);
   };
 

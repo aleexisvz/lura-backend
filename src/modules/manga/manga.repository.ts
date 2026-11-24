@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../../infrastructure/database/prisma.js";
 import { keysetAfter, type PageRequest } from "../../shared/http/pagination.js";
 import type { UpdateMangaDTO, UpdateVolumeDTO } from "./manga.types.js";
@@ -10,18 +11,42 @@ const mangaWithTagsInclude = {
   },
 } as const;
 
+export type MangaListFilter = { tagIds: string[]; search: string };
+
+// Every condition is an AND term, so the tag, search and cursor filters never overwrite each other.
+function mangaListWhere(filter: MangaListFilter, page: PageRequest): Prisma.MangaWhereInput {
+  const conditions: Prisma.MangaWhereInput[] = [];
+  if (filter.tagIds.length > 0) {
+    conditions.push({ mangaTags: { some: { tagId: { in: filter.tagIds } } } });
+  }
+  if (filter.search) {
+    conditions.push({
+      OR: [
+        { title: { contains: filter.search, mode: "insensitive" } },
+        { titleKanji: { contains: filter.search, mode: "insensitive" } },
+        { author: { contains: filter.search, mode: "insensitive" } },
+      ],
+    });
+  }
+  if (page?.cursor) {
+    conditions.push(keysetAfter(page.cursor));
+  }
+  return { AND: conditions };
+}
+
 export class MangaRepository {
-  findAllMangas(tagIds: string[] = [], page: PageRequest = null) {
+  findAllMangas(filter: MangaListFilter = { tagIds: [], search: "" }, page: PageRequest = null) {
     return prisma.manga.findMany({
-      where: {
-        ...(tagIds.length > 0 ? { mangaTags: { some: { tagId: { in: tagIds } } } } : {}),
-        ...(page?.cursor ? keysetAfter(page.cursor) : {}),
-      },
+      where: mangaListWhere(filter, page),
       include: mangaWithTagsInclude,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       // One extra row tells the service whether another page exists.
       ...(page ? { take: page.limit + 1 } : {}),
     });
+  }
+
+  countMangas(filter: MangaListFilter) {
+    return prisma.manga.count({ where: mangaListWhere(filter, null) });
   }
 
   findFeaturedMangas(limit = 6) {

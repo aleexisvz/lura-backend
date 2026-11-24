@@ -4,7 +4,7 @@ import path from "node:path";
 import { Readable } from "node:stream";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
-import { MangaRepository } from "./manga.repository.js";
+import { MangaRepository, type MangaListFilter } from "./manga.repository.js";
 import { CloudStorageService } from "../../infrastructure/storage/CloudStorageService.js";
 import { naturalSortByFilename } from "../../shared/utils/natural-sort.js";
 import { splitPage, type PageRequest } from "../../shared/http/pagination.js";
@@ -53,15 +53,18 @@ export class MangaService {
     private tagsRepo: TagsRepository
   ) {}
 
-  async getAllMangas(tagIds: string[] = []) {
-    const mangas = await this.repo.findAllMangas(tagIds);
+  async getAllMangas(filter: MangaListFilter = { tagIds: [], search: "" }) {
+    const mangas = await this.repo.findAllMangas(filter);
     return mangas.map((manga) => this.toPublicManga(manga));
   }
 
-  async getMangasPage(tagIds: string[], page: NonNullable<PageRequest>) {
-    const mangas = await this.repo.findAllMangas(tagIds, page);
+  async getMangasPage(filter: MangaListFilter, page: NonNullable<PageRequest>) {
+    const [mangas, total] = await Promise.all([
+      this.repo.findAllMangas(filter, page),
+      this.repo.countMangas(filter),
+    ]);
     const { items, nextCursor } = splitPage(mangas, page.limit);
-    return { items: items.map((manga) => this.toPublicManga(manga)), nextCursor };
+    return { items: items.map((manga) => this.toPublicManga(manga)), nextCursor, total };
   }
 
   async getFeatured(limit = 6) {
