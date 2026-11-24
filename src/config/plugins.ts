@@ -2,6 +2,7 @@ import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
 import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
+import helmet from "@fastify/helmet";
 import type { FastifyInstance } from "fastify";
 import { env } from "./env.js";
 
@@ -18,6 +19,13 @@ export async function registerPlugins(app: FastifyInstance) {
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     // Lets the browser read the pagination cursor header from other origins.
     exposedHeaders: ["X-Next-Cursor", "X-Total-Count"],
+  });
+
+  await app.register(helmet, {
+    // Responses are JSON and files come from R2, so a strict CSP adds nothing here.
+    contentSecurityPolicy: false,
+    // The frontend runs on another origin and reads API responses and files cross-origin.
+    crossOriginResourcePolicy: { policy: "cross-origin" },
   });
 
   await app.register(multipart, {
