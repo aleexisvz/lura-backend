@@ -7,6 +7,7 @@ import sharp from "sharp";
 import { MangaRepository } from "./manga.repository.js";
 import { CloudStorageService } from "../../infrastructure/storage/CloudStorageService.js";
 import { naturalSortByFilename } from "../../shared/utils/natural-sort.js";
+import { splitPage, type PageRequest } from "../../shared/http/pagination.js";
 import { notFound, conflict, badRequest } from "../../shared/errors/error-factory.js";
 import { getImageContentType } from "../../shared/utils/get-image-content-type.js";
 import { TagsRepository } from "../tags/tags.repository.js";
@@ -55,6 +56,12 @@ export class MangaService {
   async getAllMangas(tagIds: string[] = []) {
     const mangas = await this.repo.findAllMangas(tagIds);
     return mangas.map((manga) => this.toPublicManga(manga));
+  }
+
+  async getMangasPage(tagIds: string[], page: NonNullable<PageRequest>) {
+    const mangas = await this.repo.findAllMangas(tagIds, page);
+    const { items, nextCursor } = splitPage(mangas, page.limit);
+    return { items: items.map((manga) => this.toPublicManga(manga)), nextCursor };
   }
 
   async getFeatured(limit = 6) {

@@ -1,4 +1,5 @@
 import { prisma } from "../../infrastructure/database/prisma.js";
+import { keysetAfter, type PageRequest } from "../../shared/http/pagination.js";
 import type { UpdateMangaDTO, UpdateVolumeDTO } from "./manga.types.js";
 
 const mangaWithTagsInclude = {
@@ -10,23 +11,16 @@ const mangaWithTagsInclude = {
 } as const;
 
 export class MangaRepository {
-  findAllMangas(tagIds: string[] = []) {
+  findAllMangas(tagIds: string[] = [], page: PageRequest = null) {
     return prisma.manga.findMany({
-      ...(tagIds.length > 0
-        ? {
-            where: {
-              mangaTags: {
-                some: {
-                  tagId: { in: tagIds },
-                },
-              },
-            },
-          }
-        : {}),
-      include: mangaWithTagsInclude,
-      orderBy: {
-        createdAt: "desc",
+      where: {
+        ...(tagIds.length > 0 ? { mangaTags: { some: { tagId: { in: tagIds } } } } : {}),
+        ...(page?.cursor ? keysetAfter(page.cursor) : {}),
       },
+      include: mangaWithTagsInclude,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      // One extra row tells the service whether another page exists.
+      ...(page ? { take: page.limit + 1 } : {}),
     });
   }
 
