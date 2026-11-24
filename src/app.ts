@@ -61,6 +61,11 @@ export async function buildApp() {
     disableRequestLogging: isDev,
   });
 
+  // Every response carries the request id, so a reported error can be found in the logs.
+  app.addHook("onRequest", async (request, reply) => {
+    reply.header("X-Request-Id", request.id);
+  });
+
   // In development, replace verbose multi-line request logging with a concise,
   // single-line HTTP access log displaying method, URL, status code, and duration.
   if (isDev) {

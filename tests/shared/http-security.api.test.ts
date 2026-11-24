@@ -56,6 +56,16 @@ describe("HTTP security (api)", () => {
     expect(exposed).toContain("X-Total-Count");
   });
 
+  it("sends the request id on every response, including errors", async () => {
+    const ok = await app.inject({ method: "GET", url: "/health" });
+    const notFound = await app.inject({ method: "GET", url: "/no-such-route" });
+
+    expect(ok.headers["x-request-id"]).toEqual(expect.any(String));
+    expect(notFound.statusCode).toBe(404);
+    expect(notFound.headers["x-request-id"]).toEqual(expect.any(String));
+    expect(notFound.headers["x-request-id"]).not.toBe(ok.headers["x-request-id"]);
+  });
+
   it("sends security headers on API responses", async () => {
     const response = await app.inject({ method: "GET", url: "/health" });
 
