@@ -4,6 +4,8 @@ import { badRequest } from "../errors/error-factory.js";
 export const DEFAULT_PAGE_SIZE = 50;
 export const MAX_PAGE_SIZE = 100;
 export const NEXT_CURSOR_HEADER = "X-Next-Cursor";
+// Total number of rows matching the filters, sent with every paged response.
+export const TOTAL_COUNT_HEADER = "X-Total-Count";
 
 // Keyset position: the last row of the previous page, ordered by createdAt then id.
 export type PageCursor = { createdAt: Date; id: string };

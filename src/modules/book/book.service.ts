@@ -3,7 +3,7 @@ import path from "node:path";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { notFound, badRequest } from "../../shared/errors/error-factory.js";
 import { CloudStorageService } from "../../infrastructure/storage/CloudStorageService.js";
-import { BookRepository } from "./book.repository.js";
+import { BookRepository, type BookListFilter } from "./book.repository.js";
 import type { CreateBookDTO, PublicBookDTO, UpdateBookDTO } from "./book.types.js";
 import { TagsRepository } from "../tags/tags.repository.js";
 import { splitPage, type PageRequest } from "../../shared/http/pagination.js";
@@ -20,15 +20,18 @@ export class BookService {
     private tagsRepo: TagsRepository
   ) {}
 
-  async getAllBooks(tagIds: string[] = []) {
-    const books = await this.repo.findAllBooks(tagIds);
+  async getAllBooks(filter: BookListFilter = { tagIds: [], search: "" }) {
+    const books = await this.repo.findAllBooks(filter);
     return books.map((book) => this.toPublicBook(book));
   }
 
-  async getBooksPage(tagIds: string[], page: NonNullable<PageRequest>) {
-    const books = await this.repo.findAllBooks(tagIds, page);
+  async getBooksPage(filter: BookListFilter, page: NonNullable<PageRequest>) {
+    const [books, total] = await Promise.all([
+      this.repo.findAllBooks(filter, page),
+      this.repo.countBooks(filter),
+    ]);
     const { items, nextCursor } = splitPage(books, page.limit);
-    return { items: items.map((book) => this.toPublicBook(book)), nextCursor };
+    return { items: items.map((book) => this.toPublicBook(book)), nextCursor, total };
   }
 
   async getBookById(bookId: string) {
