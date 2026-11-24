@@ -434,5 +434,56 @@ describe("Book routes (api)", () => {
       expect(badCursor.json()).toMatchObject({ code: "INVALID_PARAMS" });
     });
   });
+
+  describe("GET /books search and total", () => {
+    const seed = async () => {
+      await prisma.book.create({ data: { id: "book-dune", title: "Dune", author: "Frank Herbert" } });
+      await prisma.book.create({ data: { id: "book-found", title: "Foundation", author: "Isaac Asimov" } });
+      await prisma.book.create({ data: { id: "book-hyperion", title: "Hyperion", author: "Dan Simmons" } });
+    };
+
+    it("searches title and author without caring about case", async () => {
+      await seed();
+      const headers = buildAuthHeader(app, "USER");
+
+      const byAuthor = await app.inject({ method: "GET", url: "/books?q=frank", headers });
+      expect(byAuthor.json().map((b: { id: string }) => b.id)).toEqual(["book-dune"]);
+
+      const byTitle = await app.inject({ method: "GET", url: "/books?q=FOUND", headers });
+      expect(byTitle.json().map((b: { id: string }) => b.id)).toEqual(["book-found"]);
+    });
+
+    it("sends the total of matching books with every paged response", async () => {
+      await seed();
+      const headers = buildAuthHeader(app, "USER");
+
+      const all = await app.inject({ method: "GET", url: "/books?limit=1", headers });
+      expect(all.headers["x-total-count"]).toBe("3");
+      expect(all.json()).toHaveLength(1);
+
+      const matching = await app.inject({ method: "GET", url: "/books?limit=10&q=simmons", headers });
+      expect(matching.headers["x-total-count"]).toBe("1");
+      expect(matching.json()).toHaveLength(1);
+    });
+
+    it("keeps the search when paging through results", async () => {
+      await prisma.book.create({ data: { id: "book-a", title: "Alpha Guide", createdAt: new Date("2026-03-01T00:00:00Z") } });
+      await prisma.book.create({ data: { id: "book-b", title: "Beta Guide", createdAt: new Date("2026-03-02T00:00:00Z") } });
+      await prisma.book.create({ data: { id: "book-c", title: "Gamma Notes", createdAt: new Date("2026-03-03T00:00:00Z") } });
+      const headers = buildAuthHeader(app, "USER");
+
+      const first = await app.inject({ method: "GET", url: "/books?limit=1&q=guide", headers });
+      const second = await app.inject({
+        method: "GET",
+        url: `/books?limit=1&q=guide&cursor=${first.headers["x-next-cursor"]}`,
+        headers,
+      });
+
+      expect([...first.json(), ...second.json()].map((b: { id: string }) => b.id)).toEqual(["book-b", "book-a"]);
+      expect(second.headers["x-next-cursor"]).toBeUndefined();
+      expect(first.headers["x-total-count"]).toBe("2");
+    });
+  });
 });
+
 
