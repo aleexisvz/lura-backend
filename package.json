@@ -18,6 +18,7 @@
     "reading:xp:backfill": "tsx scripts/backfill-reading-xp.ts",
     "images:pages:backfill": "tsx scripts/backfill-pages-webp.ts",
     "images:covers:backfill": "tsx scripts/backfill-covers-webp.ts",
+    "images:volume-covers:thumbnails": "tsx scripts/backfill-volume-cover-thumbnails.ts",
     "ingest:manga": "tsx scripts/ingest-manga.ts",
     "ingest:watcher": "tsx scripts/run-watcher.ts",
     "ingest:publisher": "tsx scripts/run-publisher.ts"
