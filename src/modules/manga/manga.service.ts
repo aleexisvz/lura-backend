@@ -11,6 +11,7 @@ import { splitPage, type PageRequest } from "../../shared/http/pagination.js";
 import { notFound, conflict, badRequest } from "../../shared/errors/error-factory.js";
 import { getImageContentType } from "../../shared/utils/get-image-content-type.js";
 import { detectImageKind } from "../../shared/utils/file-signature.js";
+import { toVolumeCoverThumbnail } from "../../shared/utils/volume-cover.js";
 import { TagsRepository } from "../tags/tags.repository.js";
 
 type RawManga = {
@@ -311,10 +312,7 @@ export class MangaService {
       "cover.webp"
     );
 
-    const webpBuffer = await sharp(original)
-      .resize({ width: 600, withoutEnlargement: true })
-      .webp({ quality: 75, effort: 6 })
-      .toBuffer();
+    const webpBuffer = await toVolumeCoverThumbnail(original);
 
     await this.storage.saveStream(Readable.from(webpBuffer), absolutePath);
     await this.repo.updateVolumeCoverPath(volumeId, relativePath);

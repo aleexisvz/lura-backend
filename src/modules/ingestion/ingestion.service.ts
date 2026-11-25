@@ -8,6 +8,7 @@ import { CloudStorageService } from "../../infrastructure/storage/CloudStorageSe
 import { ChapterMapper } from "./chapter-mapper.js";
 import type { MangaPlan, VolumePlan } from "./ingestion.types.js";
 import { AppError } from "../../shared/errors/AppError.js";
+import { toVolumeCoverThumbnail } from "../../shared/utils/volume-cover.js";
 
 export class IngestionService {
   constructor(
@@ -269,13 +270,15 @@ export class IngestionService {
       });
     }
 
-    // 4. If volume has no cover, use first page as cover
+    // 4. If volume has no cover, use a thumbnail of the first page. The full page is 1000px wide and
+    // every card in the volume list would otherwise decode it for a ~170px slot.
     let volumeCoverRelative: string | undefined = undefined;
     if (firstPageBuffer) {
       try {
         const volCoverDest = this.storage.resolveVolumeCoverPath(mangaId, volume.id, ".webp");
         volumeCoverRelative = path.posix.join("manga", mangaId, "volumes", volume.id, "cover", "cover.webp");
-        await this.storage.saveStream(Readable.from(firstPageBuffer), volCoverDest);
+        const coverBuffer = await toVolumeCoverThumbnail(firstPageBuffer);
+        await this.storage.saveStream(Readable.from(coverBuffer), volCoverDest);
       } catch (err) {
         logger.warn(`[Ingestor] No se pudo guardar portada de tomo: ${(err as Error).message}`);
       }
