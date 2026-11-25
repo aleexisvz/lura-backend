@@ -80,6 +80,10 @@ All binary assets (manga page images, covers, avatars, and EPUB files) are manag
    - Book covers: `books/{bookId}/cover/cover.{ext}`
    - User avatars: `users/{userId}/profile/avatar.{ext}`
 
+   Image sizes: manga pages are WebP up to 1000px wide, manga covers WebP up to 600px, and volume covers WebP thumbnails up to 450px (`VOLUME_COVER_WIDTH` in `src/shared/utils/volume-cover.ts`). Ingestion and the manual volume cover upload share that helper. A volume list shows every volume cover at once, so a page-sized cover there costs a lot of decoding on phones.
+
+   To shrink covers that were stored at full size, run `pnpm run images:volume-covers:thumbnails`. It is a dry run unless `--apply` is passed, writes to the same key (no database change) and is safe to run again.
+
 2. **CDN Delivery**:
    - Backend **never proxies or streams** image content in production.
    - All response DTOs provide absolute, public Cloudflare R2 CDN URLs (`storage.getPublicUrl(key)`).
