@@ -55,13 +55,19 @@ export class MangaProgressService {
         volumeId: string,
         page: number
     ) {
-        const manga = await this.repo.findMangaById(mangaId);
-        if (!manga) {
-            throw notFound("MANGA_NOT_FOUND", "Manga not found");
-        }
+        // This runs on every page the reader turns, and each query is a round trip to the database, so
+        // the two reads go together and the manga is only read to pick the error code: a volume that
+        // belongs to the manga already proves the manga exists.
+        const [volume, current] = await Promise.all([
+            this.repo.findVolumeById(volumeId),
+            this.repo.findByUserAndMangaAndVolume(userId, mangaId, volumeId),
+        ]);
 
-        const volume = await this.repo.findVolumeById(volumeId);
         if (!volume || volume.mangaId !== mangaId) {
+            const manga = await this.repo.findMangaById(mangaId);
+            if (!manga) {
+                throw notFound("MANGA_NOT_FOUND", "Manga not found");
+            }
             throw notFound("VOLUME_NOT_FOUND", "Volume not found");
         }
 
@@ -74,8 +80,6 @@ export class MangaProgressService {
         }
 
         // Upsert pattern: one progress record per (user, manga, volume) triplet.
-        const current = await this.repo.findByUserAndMangaAndVolume(userId, mangaId, volumeId);
-
         if (!current) {
             return this.repo.create({
                 userId,
@@ -85,20 +89,20 @@ export class MangaProgressService {
             });
         }
 
-        if (page < volume.pagesCount) {
-            // If the user starts reading a previously completed volume again,
-            // treat it as "in progress" for continue-reading surfaces.
-            await this.completionRepo.deactivateByUserAndVolume(userId, volumeId);
-        }
+        // If the user starts reading a previously completed volume again,
+        // treat it as "in progress" for continue-reading surfaces.
+        const reopening =
+            page < volume.pagesCount
+                ? this.completionRepo.deactivateByUserAndVolume(userId, volumeId)
+                : undefined;
 
         // Progress never goes backwards inside the same volume.
-        if (page <= current.page) {
-            return current;
-        }
+        const advancing =
+            page > current.page ? this.repo.update(current.id, { page }) : undefined;
 
-        return this.repo.update(current.id, {
-            page,
-        });
+        // They do not depend on each other, so they share one round trip.
+        const [, updated] = await Promise.all([reopening, advancing]);
+        return updated ?? current;
     }
 
     async getContinueReading(userId: string) {
