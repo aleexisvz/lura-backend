@@ -145,6 +145,76 @@ describe("MangaProgressService (unit)", () => {
     expect(result.page).toBe(15);
   });
 
+  it("updateProgress() should not read the manga when the volume belongs to it", async () => {
+    repo.findByUserAndMangaAndVolume.mockResolvedValue({ id: "prog-1", page: 5 });
+    repo.update.mockResolvedValue({ id: "prog-1", volumeId: "vol-1", page: 15 });
+
+    await service.updateProgress("user-1", "manga-1", "vol-1", 15);
+
+    expect(repo.findMangaById).not.toHaveBeenCalled();
+    expect(repo.findVolumeById).toHaveBeenCalledWith("vol-1");
+    expect(repo.findByUserAndMangaAndVolume).toHaveBeenCalledWith("user-1", "manga-1", "vol-1");
+  });
+
+  it("updateProgress() should reopen a completed volume when reading before the last page, even without advancing", async () => {
+    repo.findByUserAndMangaAndVolume.mockResolvedValue({ id: "prog-1", page: 10 });
+
+    const result = await service.updateProgress("user-1", "manga-1", "vol-1", 5);
+
+    expect(completionRepo.deactivateByUserAndVolume).toHaveBeenCalledWith("user-1", "vol-1");
+    expect(repo.update).not.toHaveBeenCalled();
+    expect(result.page).toBe(10);
+  });
+
+  it("updateProgress() should not reopen the volume when it reaches the last page", async () => {
+    repo.findByUserAndMangaAndVolume.mockResolvedValue({ id: "prog-1", page: 50 });
+    repo.update.mockResolvedValue({ id: "prog-1", volumeId: "vol-1", page: 100 });
+
+    const result = await service.updateProgress("user-1", "manga-1", "vol-1", 100);
+
+    expect(completionRepo.deactivateByUserAndVolume).not.toHaveBeenCalled();
+    expect(repo.update).toHaveBeenCalledWith("prog-1", { page: 100 });
+    expect(result.page).toBe(100);
+  });
+
+  it("updateProgress() should not touch completions when the progress is new", async () => {
+    repo.findByUserAndMangaAndVolume.mockResolvedValue(null);
+    repo.create.mockResolvedValue({ id: "prog-1", volumeId: "vol-1", page: 1 });
+
+    await service.updateProgress("user-1", "manga-1", "vol-1", 1);
+
+    expect(completionRepo.deactivateByUserAndVolume).not.toHaveBeenCalled();
+  });
+
+  it("updateProgress() should start the update while the reopening is still running", async () => {
+    repo.findByUserAndMangaAndVolume.mockResolvedValue({ id: "prog-1", page: 5 });
+    repo.update.mockResolvedValue({ id: "prog-1", volumeId: "vol-1", page: 15 });
+    let finishReopening!: () => void;
+    completionRepo.deactivateByUserAndVolume.mockReturnValue(
+      new Promise((resolve) => {
+        finishReopening = () => resolve({ count: 1 });
+      })
+    );
+
+    const pending = service.updateProgress("user-1", "manga-1", "vol-1", 15);
+
+    // The update is issued before the reopening resolves, so both share one round trip.
+    await vi.waitFor(() => expect(repo.update).toHaveBeenCalled());
+    finishReopening();
+    const result = await pending;
+
+    expect(result.page).toBe(15);
+  });
+
+  it("updateProgress() should throw VOLUME_NOT_FOUND when the volume belongs to another manga", async () => {
+    repo.findVolumeById.mockResolvedValue({ id: "vol-9", mangaId: "manga-2", pagesCount: 20 });
+
+    await expect(service.updateProgress("user-1", "manga-1", "vol-9", 5)).rejects.toMatchObject({
+      code: "VOLUME_NOT_FOUND",
+    });
+    expect(repo.create).not.toHaveBeenCalled();
+  });
+
   it("updateProgress() should create independent progress for another volume", async () => {
     repo.findByUserAndMangaAndVolume.mockResolvedValue(null);
     repo.create.mockResolvedValue({
