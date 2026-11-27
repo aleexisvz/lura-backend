@@ -1,6 +1,7 @@
 import { Readable } from "stream";
 import {
   S3Client,
+  CopyObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
   ListObjectsV2Command,
@@ -8,6 +9,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { env } from "../../config/env.js";
+import { cacheControlForKey } from "./cache-control.js";
 
 export class CloudStorageService {
   private s3: S3Client;
@@ -27,16 +29,67 @@ export class CloudStorageService {
 
 
   async saveStream(stream: Readable, filepath: string, contentType?: string) {
+    const key = this.normalizeKey(filepath);
+    const cacheControl = cacheControlForKey(key);
     const upload = new Upload({
       client: this.s3,
       params: {
         Bucket: this.bucket,
-        Key: this.normalizeKey(filepath),
+        Key: key,
         Body: stream,
         ...(contentType ? { ContentType: contentType } : {}),
+        ...(cacheControl ? { CacheControl: cacheControl } : {}),
       },
     });
     await upload.done();
+  }
+
+  /** Lists every key under a prefix, following the pagination of the bucket listing. */
+  async listAllKeys(prefix: string): Promise<string[]> {
+    const keys: string[] = [];
+    let continuationToken: string | undefined;
+    do {
+      const page = await this.s3.send(
+        new ListObjectsV2Command({
+          Bucket: this.bucket,
+          Prefix: this.normalizeKey(prefix),
+          ContinuationToken: continuationToken,
+        })
+      );
+      for (const object of page.Contents ?? []) {
+        if (object.Key) keys.push(object.Key);
+      }
+      continuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+    } while (continuationToken);
+    return keys;
+  }
+
+  /** Reads the Cache-Control header currently stored for an object (undefined when it has none). */
+  async getCacheControl(filepath: string): Promise<string | undefined> {
+    const head = await this.s3.send(
+      new HeadObjectCommand({ Bucket: this.bucket, Key: this.normalizeKey(filepath) })
+    );
+    return head.CacheControl;
+  }
+
+  /**
+   * Sets the Cache-Control header of an existing object by copying it onto itself. The content, content
+   * type and custom metadata are kept as they are.
+   */
+  async setCacheControl(filepath: string, cacheControl: string) {
+    const key = this.normalizeKey(filepath);
+    const head = await this.s3.send(new HeadObjectCommand({ Bucket: this.bucket, Key: key }));
+    await this.s3.send(
+      new CopyObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        CopySource: `${this.bucket}/${key.split("/").map(encodeURIComponent).join("/")}`,
+        MetadataDirective: "REPLACE",
+        CacheControl: cacheControl,
+        ...(head.ContentType ? { ContentType: head.ContentType } : {}),
+        ...(head.Metadata ? { Metadata: head.Metadata } : {}),
+      })
+    );
   }
 
 
