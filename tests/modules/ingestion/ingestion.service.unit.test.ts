@@ -108,4 +108,56 @@ describe("IngestionService (unit)", () => {
     expect(repoMock.createManga).not.toHaveBeenCalled();
     expect(repoMock.upsertTracker).not.toHaveBeenCalled();
   });
+
+  describe("processVolume page versions", () => {
+    const volPlan = {
+      volumeNumber: 1,
+      volumeTitle: "Tomo 1",
+      language: "ES",
+      isFallback: false,
+      chapters: [{ id: "ch-1", chapterNumber: "1" }],
+    } as any;
+
+    beforeEach(async () => {
+      const sharp = (await import("sharp")).default;
+      const image = await sharp({
+        create: { width: 20, height: 30, channels: 3, background: { r: 10, g: 20, b: 30 } },
+      })
+        .png()
+        .toBuffer();
+      mangadexMock.getAtHomeServer.mockResolvedValue({
+        baseUrl: "https://cdn.example",
+        chapter: { hash: "h", data: ["a.png"] },
+      });
+      mangadexMock.downloadImageBuffer.mockResolvedValue(image);
+    });
+
+    it("gives a volume whose pages are replaced a new version, so the page URLs change", async () => {
+      repoMock.findVolumeByMangaAndNumber.mockResolvedValue({
+        id: "v1",
+        status: "READY",
+        pagesCount: 12,
+        language: "EN",
+        isFallback: true,
+        version: 1,
+      });
+
+      await service.processVolume("m1", volPlan, "ext", undefined, { force: true });
+
+      expect(repoMock.updateVolume).toHaveBeenCalledWith(
+        "v1",
+        expect.objectContaining({ status: "READY", version: 2 })
+      );
+    });
+
+    it("keeps the first version for a volume that had no pages yet", async () => {
+      repoMock.findVolumeByMangaAndNumber.mockResolvedValue(null);
+      repoMock.createVolume.mockResolvedValue({ id: "v1", pagesCount: 0, version: 1 });
+
+      await service.processVolume("m1", volPlan, "ext");
+
+      const update = repoMock.updateVolume.mock.calls[0][1];
+      expect(update).not.toHaveProperty("version");
+    });
+  });
 });
