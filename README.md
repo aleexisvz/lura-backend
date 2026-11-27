@@ -125,6 +125,7 @@ El servidor iniciará por defecto en `http://localhost:3001`.
 | `pnpm run prisma:generate` | Regenera el cliente de Prisma |
 | `pnpm run prisma:migrate` | Aplica migraciones pendientes en la base de datos |
 | `pnpm run images:volume-covers:thumbnails` | Reduce las portadas de volumen guardadas a tamaño completo (simulacro por defecto; con `--apply` escribe en R2) |
+| `pnpm run images:cache-control` | Añade la cabecera `Cache-Control` a las páginas y portadas ya subidas a R2 (simulacro por defecto; con `--apply` escribe; admite `--prefix` y `--limit`) |
 
 ### Pruebas con base de datos local
 

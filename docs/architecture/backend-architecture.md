@@ -84,6 +84,10 @@ All binary assets (manga page images, covers, avatars, and EPUB files) are manag
 
    To shrink covers that were stored at full size, run `pnpm run images:volume-covers:thumbnails`. It is a dry run unless `--apply` is passed, writes to the same key (no database change) and is safe to run again.
 
+   **Browser caching.** `CloudStorageService.saveStream` sends a `Cache-Control` header chosen from the key (`cacheControlForKey` in `src/infrastructure/storage/cache-control.ts`): manga pages get `public, max-age=31536000, immutable`, and manga, volume and book covers get `public, max-age=86400`. EPUB files and user avatars get none, because they are replaced under the same URL and the change has to show at once. Page URLs can be immutable because they carry `?v=<volume.version>` (see `listVolumePages`), so **whoever replaces the pages of a volume must bump `Volume.version`**: the manual page upload (`uploadPages`) and `IngestionService.processVolume` do it when the volume already had pages. A new write path that overwrites page files without a new version would leave browsers showing the old pages for up to a year.
+
+   To set the header on objects uploaded before this, run `pnpm run images:cache-control`. It lists the `manga/` and `books/` keys, is a dry run unless `--apply` is passed, copies each object onto itself keeping its content, content type and metadata, and skips what already has the right value.
+
 2. **CDN Delivery**:
    - Backend **never proxies or streams** image content in production.
    - All response DTOs provide absolute, public Cloudflare R2 CDN URLs (`storage.getPublicUrl(key)`).
