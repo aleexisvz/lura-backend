@@ -154,10 +154,8 @@ export class WatcherService {
                 tracker.mangaId,
                 pendingVolNum
               );
+              // processVolume already gave the volume a new version, which changes the page URLs.
               if (existingVol) {
-                await this.repo.updateVolume(existingVol.id, {
-                  version: (existingVol.version || 1) + 1,
-                });
                 await this.repo.clampReadingProgress(existingVol.id, existingVol.pagesCount);
               }
 

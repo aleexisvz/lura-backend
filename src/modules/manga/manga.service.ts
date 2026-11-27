@@ -257,9 +257,13 @@ export class MangaService {
       await Promise.all(batch.map((fn) => fn()));
     }
 
+    // Pages are cached by the browser until their URL changes, and the URL carries the volume version, so
+    // replacing pages that were already there needs a new version.
+    const replacingPages = Boolean((await this.repo.findVolumeById(volumeId))?.pagesCount);
+
     await this.repo.deletePagesByVolumeId(volumeId);
     await this.repo.createPages(volumeId, pages);
-    await this.repo.updateVolumeStatus(volumeId, pages.length);
+    await this.repo.updateVolumeStatus(volumeId, pages.length, { bumpVersion: replacingPages });
 
     return {
       uploaded: pages.length,

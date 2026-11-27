@@ -181,6 +181,9 @@ export class IngestionService {
   ) {
     // 1. Find or create volume in DB
     let volume = await this.repo.findVolumeByMangaAndNumber(mangaId, volPlan.volumeNumber);
+    // Pages are cached by the browser until their URL changes, and the URL carries the volume version,
+    // so replacing pages that were already there needs a new version.
+    const replacingPages = volume !== null && volume.pagesCount > 0;
     if (!volume) {
       volume = await this.repo.createVolume({
         mangaId,
@@ -292,6 +295,7 @@ export class IngestionService {
       pagesCount: dbPages.length,
       language: volPlan.language,
       isFallback: volPlan.isFallback,
+      ...(replacingPages ? { version: (volume.version || 1) + 1 } : {}),
       ...(volumeCoverRelative ? { coverPath: volumeCoverRelative } : {}),
     });
 

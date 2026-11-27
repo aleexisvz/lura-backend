@@ -281,12 +281,17 @@ export class MangaRepository {
     });
   }
 
-  updateVolumeStatus(id: string, pagesCount: number) {
+  /**
+   * Marks a volume as ready after its pages were uploaded. `bumpVersion` is for a volume whose pages were
+   * replaced: the version is part of the page URLs, so the new pages get new URLs.
+   */
+  updateVolumeStatus(id: string, pagesCount: number, options: { bumpVersion?: boolean } = {}) {
     return prisma.volume.update({
       where: { id },
       data: {
         status: "READY",
         pagesCount,
+        ...(options.bumpVersion ? { version: { increment: 1 } } : {}),
       },
     });
   }
